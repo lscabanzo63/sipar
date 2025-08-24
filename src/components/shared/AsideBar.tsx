@@ -49,8 +49,9 @@ export default function AsideBar({ user, items = MAIN_ITEMS }: Props) {
         {/* Foto */}
         <div className="mx-auto h-24 w-24 rounded-full overflow-hidden ring-1 ring-neutral-200">
           <Image
-            src={user?.avatarUrl || "/prueba.jpg"}
-            alt={user?.name || "avatar"}
+            src="/prueba.jpg"
+            alt={`${user?.name}`}
+            className="w-40 h-auto"
             width={96}
             height={96}
           />

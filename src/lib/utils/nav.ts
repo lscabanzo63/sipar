@@ -7,15 +7,15 @@ export type UserRole =
   | "propietario";
 
 export type NavItem = {
-  label: string;   // Texto visible (SORTEOS, etc.)
-  path: string;    // Ruta a la que navega
-  exact?: boolean; // Si quieres marcar activo solo cuando coincide exacto
+  label: string;   
+  path: string;    
+  exact?: boolean;
 };
 
 // Catálogo base de módulos (para no repetir paths)
 const MODULES = {
   sorteos:        { label: "SORTEOS", path: "/mainpage/sorteos", exact: true },
-  reporteSorteos: { label: "REPORTE DE SORTEOS", path: "/mainpage/sorteos/reportes" },
+  reporteSorteos: { label: "REPORTE DE SORTEOS", path: "/mainpage//reporte-sorteos" },
   propietarios:   { label: "ADMINISTRACION DE PROPIETARIOS", path: "/mainpage/propietarios" },
   seguridadAdm:   { label: "SEGURIDAD ADMINISTRATIVA", path: "/mainpage/seguridad" },
 } as const;

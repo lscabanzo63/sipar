@@ -3,11 +3,9 @@
 /* 🎯 Tokens base */
 :root {
   --background: #f9fafb;     
-  --foreground: #171717;
   --radius-lg: 20px;
 }
 
-/* 🎨 Tokens de marca + tipografía */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -16,9 +14,13 @@
   --color-header: #f9fafb;
   --color-brand-600: #3e165f;
 
-  /* el --font-sans lo definiremos con next/font */
   --font-sans: var(--font-sans);
   --radius-ctrl: 12px;
+}
+@layer base {
+  :where(article, aside, nav, section, main) h1 {
+    @apply text-2xl md:text-3xl font-semibold;
+  }
 }
 
 
