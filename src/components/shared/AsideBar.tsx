@@ -23,44 +23,48 @@ type Props = {
 };
 
 const MAIN_ITEMS: SidebarItem[] = [
-  { label: "Perfil",         href: "/mainpage/perfil",         icon: UserCircleIcon },
+  { label: "Perfil", href: "/mainpage/perfil", icon: UserCircleIcon },
   { label: "Notificaciones", href: "/mainpage/notificaciones", icon: BellIcon },
-  { label: "Pendientes",     href: "/mainpage/pendientes",     icon: ClipboardDocumentCheckIcon },
+  { label: "Pendientes", href: "/mainpage/pendientes", icon: ClipboardDocumentCheckIcon },
 ];
 
 export default function AsideBar({ user, items = MAIN_ITEMS }: Props) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-fit bg-white  hidden lg:block">
-
-      <div className="
-        h-screen
-        grid grid-rows-[1fr_auto_auto_auto_1fr_auto]
+   <aside className="w-fit bg-white hidden lg:block h-full">
+    <div
+      className="
+        h-full
+        grid grid-rows-[1fr_auto_1fr_auto]   /* ↑ espacio | bloque centrado | espacio | acciones */
         justify-items-center
         px-6
-      ">
-        {/* spacer superior (1fr) */}
-        <div />
+      "
+    >
+      {/* 1) ESPACIO SUPERIOR (1fr) */}
+      <div />
 
-        {/* Avatar centrado verticalmente (fila 2) */}
-        <div className="h-24 w-24 rounded-full overflow-hidden ring-1 ring-neutral-200">
-          {/* {user?.avatarUrl ? ( */}
-            <Image src="/prueba.jpg" alt={user?.name || "avatar"} width={96} height={96} />
-          {/* ) : (
-            <div className="h-full w-full bg-neutral-200" />
-          )} */}
+      {/* 2) BLOQUE CENTRADO: Foto → Nombre/Rol → Menú (hasta Pendientes) */}
+      <div className="w-full max-w-[220px]">
+        {/* Foto */}
+        <div className="mx-auto h-24 w-24 rounded-full overflow-hidden ring-1 ring-neutral-200">
+          <Image
+            src={user?.avatarUrl || "/prueba.jpg"}
+            alt={user?.name || "avatar"}
+            width={96}
+            height={96}
+          />
         </div>
 
-        {/* Nombre / rol (fila 3) */}
-        <div className="text-center">
-          <p className="mt-3 text-lg font-semibold text-neutral-900 leading-tight">
+        {/* Nombre / rol */}
+        <div className="mt-4 text-center">
+          <p className="text-lg font-semibold text-neutral-900 leading-tight">
             {user?.name ?? "Usuario"}
           </p>
           <p className="text-sm text-neutral-500">{user?.role ?? "Rol"}</p>
         </div>
 
-        {/* Menú principal (fila 4) — SIEMPRE debajo del avatar */}
+        {/* Menú principal (incluye Perfil, Notificaciones, Pendientes) */}
         <nav className="mt-6 w-full">
           <ul className="space-y-5">
             {items.map(({ href, label, icon: Icon }) => {
@@ -88,29 +92,30 @@ export default function AsideBar({ user, items = MAIN_ITEMS }: Props) {
             })}
           </ul>
         </nav>
-
-        {/* spacer inferior (1fr) para mantener el avatar al centro */}
-        <div />
-
-        {/* Acciones (fila 6) ancladas abajo */}
-        <div className="w-full pb-8 space-y-6">
-          <Link
-            href="/mainpage/configuracion"
-            className="flex items-center gap-4 text-neutral-700 hover:text-brand px-2"
-          >
-            <Cog6ToothIcon className="h-6 w-6" />
-            <span>Configuración</span>
-          </Link>
-
-          <button
-            type="button"
-            className="flex items-center gap-4 text-neutral-700 hover:text-red-500 px-2"
-          >
-            <ArrowRightOnRectangleIcon className="h-6 w-6" />
-            <span>Cerrar sesión</span>
-          </button>
-        </div>
       </div>
-    </aside>
+
+      {/* 3) ESPACIO INFERIOR (1fr) */}
+      <div />
+
+      {/* 4) ACCIONES ancladas abajo */}
+      <div className="w-full pb-8 space-y-6">
+        <Link
+          href="/mainpage/configuracion"
+          className="flex items-center gap-4 text-neutral-700 hover:text-brand px-2"
+        >
+          <Cog6ToothIcon className="h-6 w-6" />
+          <span>Configuración</span>
+        </Link>
+
+        <button
+          type="button"
+          className="flex items-center gap-4 text-neutral-700 hover:text-red-500 px-2"
+        >
+          <ArrowRightOnRectangleIcon className="h-6 w-6" />
+          <span>Cerrar sesión</span>
+        </button>
+      </div>
+    </div>
+  </aside>
   );
 }
