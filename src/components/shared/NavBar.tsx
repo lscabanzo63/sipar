@@ -10,7 +10,7 @@ export default function NavBar({ items }: Props) {
   const pathname = usePathname();
 
   return (
-    <nav className="w-full border-t border-neutral-200">
+    <nav className="w-full ">
       <div className="mx-auto max-w-6xl px-4">
         <ul className="flex items-center gap-6 overflow-x-auto py-4">
           {items.map((item, idx) => {

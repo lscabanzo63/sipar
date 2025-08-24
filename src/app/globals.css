@@ -2,7 +2,7 @@
 
 /* 🎯 Tokens base */
 :root {
-  --background: #eee;     
+  --background: #f9fafb;     
   --foreground: #171717;
   --radius-lg: 20px;
 }
@@ -13,6 +13,7 @@
   --color-foreground: var(--foreground);
 
   --color-brand: #552373;
+  --color-header: #f9fafb;
   --color-brand-600: #3e165f;
 
   /* el --font-sans lo definiremos con next/font */

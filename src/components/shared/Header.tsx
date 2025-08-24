@@ -3,7 +3,7 @@ import Image from "next/image";
 import SocialNav from "@/components/shared/SocialNav";
 export default function Header({ userName }: HeaderProps) {
   return (
-    <header className="w-full bg-white">
+    <header className="w-full bg-header">
       <div className="bg-brand text-white">
         <div className="mx-auto max-w-6xl px-4 h-10 flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
@@ -28,7 +28,6 @@ export default function Header({ userName }: HeaderProps) {
 
           {/* Account */}
           <div className="flex items-center gap-3 text-brand">
-            {/* ícono usuario simple */}
             <span aria-hidden>👤</span>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-neutral-500">Hola de nuevo{userName ? "," : ""}</span>
@@ -38,7 +37,7 @@ export default function Header({ userName }: HeaderProps) {
         </div>
 
         {/* Línea divisoria */}
-        <div className="mt-4 h-px bg-neutral-200" />
+        <div className="mt-4 h-px bg-brand" />
       </div>
     </header>
   );

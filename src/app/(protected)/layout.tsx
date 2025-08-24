@@ -18,7 +18,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       "
     >
       {/* ASIDE (oculto en mobile) */}
-      <aside className="hidden lg:block lg:col-[1] lg:row-[1/-1] bg-white">
+      <aside className="hidden lg:block lg:col-[1] lg:row-[1/-1]">
         <AsideBar user={{ name: "Santiago Cabanzo", role: role }} />
       </aside>
 
