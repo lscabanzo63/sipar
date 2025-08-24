@@ -1,24 +1,41 @@
-import Header from "@/components/shared/Header";
+// src/app/(protected)/layout.tsx
+import AsideBar from "@/components/shared/AsideBar";
 import NavBar from "@/components/shared/NavBar";
-import Sidebar from "@/components/shared/AsideBar";
+import Header from "@/components/shared/Header";
 import { getNavItemsFor, type UserRole } from "@/lib/utils/nav";
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const userName = "Santiago";
-  const role: UserRole = "admin"; // Aquí podrías obtener el rol real del usuario
+
+export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const role: UserRole = "admin";
   const navItems = getNavItemsFor(role);
 
- return (
-    <>
-      <Header userName="Santiago" />
-      <NavBar items={navItems} />
+  return (
+    <div
+      className="
+        grid min-h-screen
+        grid-cols-1
+        lg:grid-cols-[auto_1fr]             
+        grid-rows-[auto_auto_minmax(0,1fr)] 
+      "
+    >
+      {/* ASIDE (oculto en mobile) */}
+      <aside className="hidden lg:block lg:col-[1] lg:row-[1/-1] bg-white">
+        <AsideBar user={{ name: "Santiago Cabanzo", role: role }} />
+      </aside>
 
-      {/* Layout con sidebar a la izquierda */}
-      <div className="mx-auto max-w-7xl px-4">
-        <div className="flex gap-6">
-          <Sidebar user={{ name: `${userName}`, role: "Celadora" }} />
-          <main className="flex-1 py-8">{children}</main>
-        </div>
-      </div>
-    </>
+      {/* HEADER */}
+      <header className="col-[1] lg:col-[2] row-[1] ">
+        <Header userName="Santiago" />
+      </header>
+
+      {/* NAVBAR */}
+      <nav className="col-[1] lg:col-[2] row-[2] z-10">
+        <NavBar items={navItems} />
+      </nav>
+
+      {/* MAIN */}
+      <main className="col-[1] lg:col-[2] row-[3] ">
+        <div className="mx-auto max-w-6xl">{children}</div>
+      </main>
+    </div>
   );
 }

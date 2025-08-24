@@ -4,12 +4,9 @@ import SocialNav from "@/components/shared/SocialNav";
 export default function Header({ userName }: HeaderProps) {
   return (
     <header className="w-full bg-white">
-      {/* Top bar */}
       <div className="bg-brand text-white">
         <div className="mx-auto max-w-6xl px-4 h-10 flex items-center justify-between text-sm">
-          {/* Teléfono */}
           <div className="flex items-center gap-2">
-            {/* ícono teléfono (usa SVG inline o el carácter ☎︎ si no quieres paquetes) */}
             <span aria-hidden>☎︎</span>
             <span>(601) 6210372</span>
           </div>
