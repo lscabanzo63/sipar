@@ -15,9 +15,9 @@ export type NavItem = {
 // Catálogo base de módulos (para no repetir paths)
 const MODULES = {
   sorteos:        { label: "SORTEOS", path: "/mainpage/sorteos", exact: true },
-  reporteSorteos: { label: "REPORTE DE SORTEOS", path: "/mainpage//reporte-sorteos" },
-  propietarios:   { label: "ADMINISTRACION DE PROPIETARIOS", path: "/mainpage/propietarios" },
-  seguridadAdm:   { label: "SEGURIDAD ADMINISTRATIVA", path: "/mainpage/seguridad" },
+  reporteSorteos: { label: "REPORTE DE SORTEOS", path: "/mainpage/reporte-sorteos" },
+  propietarios:   { label: "ADMINISTRACION DE RESIDENTES", path: "/mainpage/administracion-residentes" },
+  seguridadAdm:   { label: "ADMINISTRACION SEGURIDAD", path: "/mainpage/administracion-seguridad" },
 } as const;
 
 
