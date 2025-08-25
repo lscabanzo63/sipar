@@ -30,7 +30,7 @@ export default function Header({ userName }: HeaderProps) {
           <div className="flex items-center gap-3 text-brand">
             <span aria-hidden>👤</span>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-neutral-500">Hola de nuevo{userName ? "," : ""}</span>
+              <span className="text-neutral-500">Bienvenido de nuevo{userName ? "," : ""}</span>
               {userName && <strong>{userName}</strong>}              
             </div>
           </div>

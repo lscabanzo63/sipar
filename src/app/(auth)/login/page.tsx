@@ -1,14 +1,22 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
 
+ const handleLogin = () => {
+    // aquí podrías validar credenciales en el futuro
+    router.push("/mainpage");
+  };
+
+  
   return (
     <main className="min-h-[100dvh] flex items-center justify-center p-6">
       <div
@@ -42,7 +50,7 @@ export default function LoginPage() {
           <TextField
             label="Email"
             type="email"
-            placeholder="get@ziontutorial.com"
+            placeholder="usuario@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -57,8 +65,11 @@ export default function LoginPage() {
           />
 
           <div className="space-y-3 pt-2">
-            <Button type="submit"
-            fullWidth>
+            <Button 
+            type="submit"
+            fullWidth
+            onClick={handleLogin}
+            >
               Log in
             </Button>
           </div>

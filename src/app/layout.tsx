@@ -8,7 +8,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      {/* inter.variable inyecta --font-sans; también puedes añadir inter.className si prefieres */}
+   
       <body className={inter.variable}>{children}</body>
     </html>
   );

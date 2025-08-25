@@ -14,12 +14,6 @@ export default function ReporteDeSorteosPage() {
   const data: SorteoRow[] = [
     { id: 101, fechaRealizacion: "2025-08-15", parqueaderosTotales: 24 },
     { id: 102, fechaRealizacion: "2025-08-22", parqueaderosTotales: 30 },
-    { id: 102, fechaRealizacion: "2025-08-22", parqueaderosTotales: 30 },
-    { id: 102, fechaRealizacion: "2025-08-22", parqueaderosTotales: 30 },
-    { id: 101, fechaRealizacion: "2025-08-15", parqueaderosTotales: 24 },
-    { id: 102, fechaRealizacion: "2025-08-22", parqueaderosTotales: 30 },
-    { id: 102, fechaRealizacion: "2025-08-22", parqueaderosTotales: 30 },
-    { id: 102, fechaRealizacion: "2025-08-22", parqueaderosTotales: 30 },
   ];
 
   return (
