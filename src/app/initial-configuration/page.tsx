@@ -8,10 +8,10 @@ import {
   MapPinIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import TextFieldLine from "@/components/ui/TextFieldLine";
 import { Button } from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
-import { useRouter } from "next/navigation";
 
 export default function InitialConfigurationPage() {
   const router = useRouter();
@@ -33,22 +33,22 @@ export default function InitialConfigurationPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Guardar cambios y volver a bloquear
     console.log("Formulario guardado:", form);
     setIsEditable(false);
   };
 
-  const handleConfirm = async () => {
-    setLoading(true);
-    try {
-      // Simulación de procesamiento
-      await new Promise((r) => setTimeout(r, 2000));
-      console.log("Confirmar con datos:", form);
+  const handleToggleEdit = () => {
+    setIsEditable((v) => !v);
+  };
 
-      // ✅ Redirigir al segundo paso
-      router.push("/initial-configuration/structure-configuration");
-    } finally {
-      setLoading(false);
-    }
+  const handleConfirm = async () => {
+    // Si quieres mostrar overlay mientras navegamos:
+    setLoading(true);
+    // Aquí podrías hacer una llamada al backend si es necesario.
+    // Navegación a la siguiente página
+    router.push("initial-configuration/structure-configuration");
+    // No necesitamos setLoading(false) porque la navegación desmonta este componente.
   };
 
   return (
@@ -76,7 +76,7 @@ export default function InitialConfigurationPage() {
                   correcta. Si necesitas cambiar algo, presiona{" "}
                   <button
                     type="button"
-                    onClick={() => setIsEditable((v) => !v)}
+                    onClick={handleToggleEdit}
                     className="font-medium underline text-[var(--color-brand)] cursor-pointer transition hover:brightness-110"
                   >
                     {isEditable ? "Cancelar edición" : "Modificar"}
@@ -199,9 +199,14 @@ export default function InitialConfigurationPage() {
               </div>
             </form>
 
-            {/* Botón Confirmar */}
+            {/* Botón Confirmar (deshabilitado si se edita o si hay loading) */}
             <div className="flex justify-center mb-8">
-              <Button variant="primary" size="md" onClick={handleConfirm}>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleConfirm}
+                disabled={isEditable || loading}
+              >
                 Confirmar
               </Button>
             </div>
@@ -222,7 +227,7 @@ export default function InitialConfigurationPage() {
         </aside>
       </main>
 
-      {/* Overlay de carga con Spinner */}
+      {/* Overlay de carga con Spinner (aparece al confirmar) */}
       <Spinner
         variant="overlay"
         open={loading}
