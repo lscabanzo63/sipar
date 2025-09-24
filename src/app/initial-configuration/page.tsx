@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   EnvelopeIcon,
   PhoneIcon,
@@ -12,39 +12,76 @@ import TextFieldLine from "@/components/ui/TextFieldLine";
 import { Button } from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { useRouter } from "next/navigation";
+import {
+  getInitialConfigFromSession,
+  InitialConfigResponse,
+} from "@/lib/api/setup";
+
+type FormState = {
+  email: string;
+  nombre: string;
+  telefono: string;
+  ciudad: string;
+  direccion: string;
+  parqueaderos: string; // lo manejamos como string en el form
+};
 
 export default function InitialConfigurationPage() {
   const router = useRouter();
 
-  const [form, setForm] = useState({
-    email: "xxxxx@gmail.com",
-    nombre: "Conjunto Residencial Las Palmas",
-    telefono: "3204578787",
-    ciudad: "Bogotá D.C.",
-    direccion: "Cl. 74 Sur # 82G-20, Bosa",
-    parqueaderos: "245",
+  const [form, setForm] = useState<FormState>({
+    email: "",
+    nombre: "",
+    telefono: "",
+    ciudad: "",
+    direccion: "",
+    parqueaderos: "",
   });
 
   const [isEditable, setIsEditable] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const set = (k: keyof typeof form) => (v: string) =>
+  // helper setter
+  const set = (k: keyof FormState) => (v: string) =>
     setForm((s) => ({ ...s, [k]: v }));
+
+  // Cargar datos del endpoint al montar
+  useEffect(() => {
+    (async () => {
+      try {
+        const data: InitialConfigResponse = await getInitialConfigFromSession();
+
+        // Mapear al shape del formulario con ternarios (null -> '')
+        setForm({
+          email: (data.email ?? "") as string,
+          nombre: (data.nombre_conjunto ?? "") as string,
+          telefono: (data.telefono ?? "") as string,
+          ciudad: (data.ciudad ?? "") as string,
+          direccion: (data.direccion ?? "") as string,
+          parqueaderos:
+            data.cantidad_parqueaderos != null
+              ? String(data.cantidad_parqueaderos)
+              : "",
+        });
+      } catch {
+        setError("No se pudo cargar la configuración inicial");
+      } finally {
+        setLoadingInitial(false);
+      }
+    })();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Formulario guardado:", form);
     setIsEditable(false);
   };
 
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      // Simulación de procesamiento
-      await new Promise((r) => setTimeout(r, 2000));
-      console.log("Confirmar con datos:", form);
-
-      // ✅ Redirigir al segundo paso
+      // Aquí luego harás el PATCH; por ahora solo navegamos
       router.push("/initial-configuration/structure-configuration");
     } finally {
       setLoading(false);
@@ -60,7 +97,7 @@ export default function InitialConfigurationPage() {
             {/* Bienvenida */}
             <div>
               <h2 className="text-2xl font-semibold text-center">
-                Bienvenido Jorge, confirmemos algunos datos antes de empezar...
+                Bienvenido, confirmemos algunos datos antes de empezar...
               </h2>
             </div>
 
@@ -85,110 +122,116 @@ export default function InitialConfigurationPage() {
                 </p>
               </header>
 
-              {/* Campos */}
-              <section className="relative">
-                {!isEditable && (
-                  <div
-                    className="absolute inset-0 z-10 cursor-not-allowed"
-                    aria-hidden="true"
-                  />
-                )}
+              {/* Carga inicial / error */}
+              {loadingInitial ? (
+                <p className="text-sm text-neutral-600">Cargando…</p>
+              ) : error ? (
+                <p className="text-sm text-red-600">{error}</p>
+              ) : (
+                <section className="relative">
+                  {!isEditable && (
+                    <div
+                      className="absolute inset-0 z-10 cursor-not-allowed"
+                      aria-hidden="true"
+                    />
+                  )}
 
-                <div className="space-y-6">
-                  <TextFieldLine
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={form.email}
-                    icon={<EnvelopeIcon className="h-5 w-5" />}
-                    placeholder="usuario@ejemplo.com"
-                    pattern={/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/}
-                    errorMessage="Ingresa un correo válido"
-                    required
-                    validateOnBlur
-                    readOnly={!isEditable}
-                    onChange={set("email")}
-                  />
+                  <div className="space-y-6">
+                    <TextFieldLine
+                      label="Email"
+                      name="email"
+                      type="email"
+                      value={form.email ?? ""} // ternario/?? para null -> ''
+                      icon={<EnvelopeIcon className="h-5 w-5" />}
+                      placeholder="usuario@ejemplo.com"
+                      pattern={/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/}
+                      errorMessage="Ingresa un correo válido"
+                      required
+                      validateOnBlur
+                      readOnly={!isEditable}
+                      onChange={set("email")}
+                    />
 
-                  <TextFieldLine
-                    label="Nombre"
-                    name="nombre"
-                    value={form.nombre}
-                    icon={<BuildingOfficeIcon className="h-5 w-5" />}
-                    placeholder="Nombre del conjunto residencial"
-                    pattern={/^.+$/}
-                    errorMessage="El nombre no puede estar vacío"
-                    required
-                    validateOnBlur
-                    readOnly={!isEditable}
-                    onChange={set("nombre")}
-                  />
+                    <TextFieldLine
+                      label="Nombre"
+                      name="nombre"
+                      value={form.nombre ?? ""}
+                      icon={<BuildingOfficeIcon className="h-5 w-5" />}
+                      placeholder="Nombre del conjunto residencial"
+                      pattern={/^.+$/}
+                      errorMessage="El nombre no puede estar vacío"
+                      required
+                      validateOnBlur
+                      readOnly={!isEditable}
+                      onChange={set("nombre")}
+                    />
 
-                  <TextFieldLine
-                    label="Teléfono"
-                    name="telefono"
-                    type="text"
-                    value={form.telefono}
-                    icon={<PhoneIcon className="h-5 w-5" />}
-                    placeholder="Ej: 3204578787"
-                    allowedPattern={/^\d{0,10}$/}
-                    pattern={/^\d{10}$/}
-                    errorMessage="El teléfono debe tener 10 dígitos numéricos"
-                    required
-                    validateOnBlur
-                    readOnly={!isEditable}
-                    onChange={set("telefono")}
-                  />
+                    <TextFieldLine
+                      label="Teléfono"
+                      name="telefono"
+                      type="text"
+                      value={form.telefono ?? ""}
+                      icon={<PhoneIcon className="h-5 w-5" />}
+                      placeholder="Ej: 3204578787"
+                      allowedPattern={/^\d{0,10}$/}
+                      pattern={/^\d{10}$/}
+                      errorMessage="El teléfono debe tener 10 dígitos numéricos"
+                      required
+                      validateOnBlur
+                      readOnly={!isEditable}
+                      onChange={set("telefono")}
+                    />
 
-                  <TextFieldLine
-                    label="Ciudad"
-                    name="ciudad"
-                    value={form.ciudad}
-                    icon={<MapPinIcon className="h-5 w-5" />}
-                    placeholder="Bogotá D.C."
-                    pattern={/^.+$/}
-                    errorMessage="La ciudad no puede estar vacía"
-                    required
-                    validateOnBlur
-                    readOnly={!isEditable}
-                    onChange={set("ciudad")}
-                  />
+                    <TextFieldLine
+                      label="Ciudad"
+                      name="ciudad"
+                      value={form.ciudad ?? ""}
+                      icon={<MapPinIcon className="h-5 w-5" />}
+                      placeholder="Bogotá D.C."
+                      pattern={/^.+$/}
+                      errorMessage="La ciudad no puede estar vacía"
+                      required
+                      validateOnBlur
+                      readOnly={!isEditable}
+                      onChange={set("ciudad")}
+                    />
 
-                  <TextFieldLine
-                    label="Dirección"
-                    name="direccion"
-                    value={form.direccion}
-                    icon={<MapPinIcon className="h-5 w-5" />}
-                    placeholder="Cl. 74 Sur # 82G-20, Bosa"
-                    pattern={/^.+$/}
-                    errorMessage="La dirección no puede estar vacía"
-                    required
-                    validateOnBlur
-                    readOnly={!isEditable}
-                    onChange={set("direccion")}
-                  />
+                    <TextFieldLine
+                      label="Dirección"
+                      name="direccion"
+                      value={form.direccion ?? ""}
+                      icon={<MapPinIcon className="h-5 w-5" />}
+                      placeholder="Cl. 74 Sur # 82G-20, Bosa"
+                      pattern={/^.+$/}
+                      errorMessage="La dirección no puede estar vacía"
+                      required
+                      validateOnBlur
+                      readOnly={!isEditable}
+                      onChange={set("direccion")}
+                    />
 
-                  <TextFieldLine
-                    label="Cantidad de parqueaderos"
-                    name="parqueaderos"
-                    type="text"
-                    value={form.parqueaderos}
-                    icon={<BuildingOfficeIcon className="h-5 w-5" />}
-                    placeholder="245"
-                    allowedPattern={/^\d*$/}
-                    pattern={/^\d+$/}
-                    errorMessage="Solo se permiten números"
-                    required
-                    validateOnBlur
-                    readOnly={!isEditable}
-                    onChange={set("parqueaderos")}
-                  />
-                </div>
-              </section>
+                    <TextFieldLine
+                      label="Cantidad de parqueaderos"
+                      name="parqueaderos"
+                      type="text"
+                      value={form.parqueaderos ?? ""}
+                      icon={<BuildingOfficeIcon className="h-5 w-5" />}
+                      placeholder="245"
+                      allowedPattern={/^\d*$/}
+                      pattern={/^\d+$/}
+                      errorMessage="Solo se permiten números"
+                      required
+                      validateOnBlur
+                      readOnly={!isEditable}
+                      onChange={set("parqueaderos")}
+                    />
+                  </div>
+                </section>
+              )}
 
               {/* Espacio reservado para evitar saltos */}
               <div className="pt-2 h-[56px] flex justify-center items-start">
-                {isEditable && (
+                {isEditable && !loadingInitial && !error && (
                   <button
                     type="submit"
                     className="rounded-full px-6 py-3 shadow-md bg-[var(--color-brand)] text-white cursor-pointer transition hover:brightness-110"
@@ -201,7 +244,12 @@ export default function InitialConfigurationPage() {
 
             {/* Botón Confirmar */}
             <div className="flex justify-center mb-8">
-              <Button variant="primary" size="md" onClick={handleConfirm}>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleConfirm}
+                disabled={loadingInitial || !!error}
+              >
                 Confirmar
               </Button>
             </div>
