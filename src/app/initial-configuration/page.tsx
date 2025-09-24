@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   EnvelopeIcon,
   PhoneIcon,
@@ -14,8 +14,9 @@ import Spinner from "@/components/ui/Spinner";
 import { useRouter } from "next/navigation";
 import {
   getInitialConfigFromSession,
+  patchInitialConfigFromSession,
   InitialConfigResponse,
-} from "@/lib/api/setup";
+} from "@/lib/api/confirmData";
 
 type FormState = {
   email: string;
@@ -23,11 +24,12 @@ type FormState = {
   telefono: string;
   ciudad: string;
   direccion: string;
-  parqueaderos: string; // lo manejamos como string en el form
+  parqueaderos: string;
 };
 
 export default function InitialConfigurationPage() {
   const router = useRouter();
+  const scrollRef = useRef<HTMLElement | null>(null); // 👈 ref del contenedor scrollable
 
   const [form, setForm] = useState<FormState>({
     email: "",
@@ -42,24 +44,31 @@ export default function InitialConfigurationPage() {
   const [loading, setLoading] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  // helper setter
   const set = (k: keyof FormState) => (v: string) =>
     setForm((s) => ({ ...s, [k]: v }));
 
-  // Cargar datos del endpoint al montar
+  // subir el scroll del formulario
+  function scrollToTopOfForm() {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: 0, behavior: "smooth" });
+    requestAnimationFrame(() => {
+      el.scrollTop = 0;
+    });
+  }
+
   useEffect(() => {
     (async () => {
       try {
         const data: InitialConfigResponse = await getInitialConfigFromSession();
-
-        // Mapear al shape del formulario con ternarios (null -> '')
         setForm({
-          email: (data.email ?? "") as string,
-          nombre: (data.nombre_conjunto ?? "") as string,
-          telefono: (data.telefono ?? "") as string,
-          ciudad: (data.ciudad ?? "") as string,
-          direccion: (data.direccion ?? "") as string,
+          email: data.email ?? "",
+          nombre: data.nombre_conjunto ?? "",
+          telefono: data.telefono ?? "",
+          ciudad: data.ciudad ?? "",
+          direccion: data.direccion ?? "",
           parqueaderos:
             data.cantidad_parqueaderos != null
               ? String(data.cantidad_parqueaderos)
@@ -73,35 +82,58 @@ export default function InitialConfigurationPage() {
     })();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsEditable(false);
+    setSaved(false);
+    setError(null);
+    setLoading(true);
+    try {
+      await patchInitialConfigFromSession({
+        email: form.email ?? "",
+        nombre_conjunto: form.nombre ?? "",
+        ciudad: form.ciudad ?? "",
+        direccion: form.direccion ?? "",
+        telefono: form.telefono ?? "",
+        cantidad_parqueaderos: form.parqueaderos ?? "0",
+      });
+      setIsEditable(false);
+      setSaved(true);
+      scrollToTopOfForm(); // 👈 subir scroll al éxito
+    } catch {
+      setError("No se pudieron guardar los cambios");
+      scrollToTopOfForm(); // 👈 subir scroll al error
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      // Aquí luego harás el PATCH; por ahora solo navegamos
       router.push("/initial-configuration/structure-configuration");
     } finally {
       setLoading(false);
     }
   };
 
+  const EDITABLE_KEYS = new Set<keyof FormState>(["email", "telefono", "direccion"]);
+  const canEdit = (k: keyof FormState) => isEditable && EDITABLE_KEYS.has(k);
+
   return (
     <>
       <main className="h-dvh flex flex-col lg:flex-row">
-        {/* Columna izquierda */}
-        <section className="flex-1 h-dvh bg-[var(--color-header)] flex flex-col px-6 lg:px-12 py-10 overflow-auto">
+        {/* Columna izquierda scrollable */}
+        <section
+          ref={scrollRef} // 👈 ref para controlar el scroll
+          className="flex-1 h-dvh bg-[var(--color-header)] flex flex-col px-6 lg:px-12 py-10 overflow-auto"
+        >
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-8">
-            {/* Bienvenida */}
             <div>
               <h2 className="text-2xl font-semibold text-center">
                 Bienvenido, confirmemos algunos datos antes de empezar...
               </h2>
             </div>
 
-            {/* Formulario */}
             <form
               onSubmit={handleSubmit}
               className="w-full space-y-6 bg-white p-6 rounded-2xl shadow"
@@ -113,42 +145,42 @@ export default function InitialConfigurationPage() {
                   correcta. Si necesitas cambiar algo, presiona{" "}
                   <button
                     type="button"
-                    onClick={() => setIsEditable((v) => !v)}
+                    onClick={() => {
+                      setIsEditable((v) => !v);
+                      setSaved(false);
+                      setError(null);
+                    }}
                     className="font-medium underline text-[var(--color-brand)] cursor-pointer transition hover:brightness-110"
                   >
                     {isEditable ? "Cancelar edición" : "Modificar"}
                   </button>
                   .
                 </p>
+                {saved && (
+                  <p className="mt-2 text-sm text-green-600">
+                    Cambios guardados correctamente.
+                  </p>
+                )}
+                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
               </header>
 
-              {/* Carga inicial / error */}
               {loadingInitial ? (
                 <p className="text-sm text-neutral-600">Cargando…</p>
-              ) : error ? (
-                <p className="text-sm text-red-600">{error}</p>
               ) : (
                 <section className="relative">
-                  {!isEditable && (
-                    <div
-                      className="absolute inset-0 z-10 cursor-not-allowed"
-                      aria-hidden="true"
-                    />
-                  )}
-
                   <div className="space-y-6">
                     <TextFieldLine
                       label="Email"
                       name="email"
                       type="email"
-                      value={form.email ?? ""} // ternario/?? para null -> ''
+                      value={form.email ?? ""}
                       icon={<EnvelopeIcon className="h-5 w-5" />}
                       placeholder="usuario@ejemplo.com"
                       pattern={/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/}
                       errorMessage="Ingresa un correo válido"
                       required
                       validateOnBlur
-                      readOnly={!isEditable}
+                      readOnly={!canEdit("email")}
                       onChange={set("email")}
                     />
 
@@ -162,7 +194,7 @@ export default function InitialConfigurationPage() {
                       errorMessage="El nombre no puede estar vacío"
                       required
                       validateOnBlur
-                      readOnly={!isEditable}
+                      readOnly={!canEdit("nombre")}
                       onChange={set("nombre")}
                     />
 
@@ -178,7 +210,7 @@ export default function InitialConfigurationPage() {
                       errorMessage="El teléfono debe tener 10 dígitos numéricos"
                       required
                       validateOnBlur
-                      readOnly={!isEditable}
+                      readOnly={!canEdit("telefono")}
                       onChange={set("telefono")}
                     />
 
@@ -192,7 +224,7 @@ export default function InitialConfigurationPage() {
                       errorMessage="La ciudad no puede estar vacía"
                       required
                       validateOnBlur
-                      readOnly={!isEditable}
+                      readOnly={!canEdit("ciudad")}
                       onChange={set("ciudad")}
                     />
 
@@ -206,7 +238,7 @@ export default function InitialConfigurationPage() {
                       errorMessage="La dirección no puede estar vacía"
                       required
                       validateOnBlur
-                      readOnly={!isEditable}
+                      readOnly={!canEdit("direccion")}
                       onChange={set("direccion")}
                     />
 
@@ -222,19 +254,19 @@ export default function InitialConfigurationPage() {
                       errorMessage="Solo se permiten números"
                       required
                       validateOnBlur
-                      readOnly={!isEditable}
+                      readOnly={!canEdit("parqueaderos")}
                       onChange={set("parqueaderos")}
                     />
                   </div>
                 </section>
               )}
 
-              {/* Espacio reservado para evitar saltos */}
               <div className="pt-2 h-[56px] flex justify-center items-start">
                 {isEditable && !loadingInitial && !error && (
                   <button
                     type="submit"
                     className="rounded-full px-6 py-3 shadow-md bg-[var(--color-brand)] text-white cursor-pointer transition hover:brightness-110"
+                    disabled={loading}
                   >
                     Guardar cambios
                   </button>
@@ -242,7 +274,6 @@ export default function InitialConfigurationPage() {
               </div>
             </form>
 
-            {/* Botón Confirmar */}
             <div className="flex justify-center mb-8">
               <Button
                 variant="primary"
@@ -270,7 +301,6 @@ export default function InitialConfigurationPage() {
         </aside>
       </main>
 
-      {/* Overlay de carga con Spinner */}
       <Spinner
         variant="overlay"
         open={loading}
