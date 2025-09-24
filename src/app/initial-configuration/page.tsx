@@ -107,7 +107,9 @@ export default function InitialConfigurationPage() {
     }
   };
 
+
   const handleConfirm = async () => {
+    // Si quieres mostrar overlay mientras navegamos:
     setLoading(true);
     try {
       router.push("/initial-configuration/structure-configuration");
@@ -274,12 +276,13 @@ export default function InitialConfigurationPage() {
               </div>
             </form>
 
+            {/* Botón Confirmar (deshabilitado si se edita o si hay loading) */}
             <div className="flex justify-center mb-8">
               <Button
                 variant="primary"
                 size="md"
                 onClick={handleConfirm}
-                disabled={loadingInitial || !!error}
+                disabled={isEditable || loading}
               >
                 Confirmar
               </Button>
