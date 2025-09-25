@@ -29,7 +29,7 @@ type FormState = {
 
 export default function InitialConfigurationPage() {
   const router = useRouter();
-  const scrollRef = useRef<HTMLElement | null>(null); // 👈 ref del contenedor scrollable
+  const scrollRef = useRef<HTMLElement | null>(null);
 
   const [form, setForm] = useState<FormState>({
     email: "",
@@ -49,7 +49,6 @@ export default function InitialConfigurationPage() {
   const set = (k: keyof FormState) => (v: string) =>
     setForm((s) => ({ ...s, [k]: v }));
 
-  // subir el scroll del formulario
   function scrollToTopOfForm() {
     const el = scrollRef.current;
     if (!el) return;
@@ -98,18 +97,16 @@ export default function InitialConfigurationPage() {
       });
       setIsEditable(false);
       setSaved(true);
-      scrollToTopOfForm(); // 👈 subir scroll al éxito
+      scrollToTopOfForm();
     } catch {
       setError("No se pudieron guardar los cambios");
-      scrollToTopOfForm(); // 👈 subir scroll al error
+      scrollToTopOfForm();
     } finally {
       setLoading(false);
     }
   };
 
-
   const handleConfirm = async () => {
-    // Si quieres mostrar overlay mientras navegamos:
     setLoading(true);
     try {
       router.push("/initial-configuration/structure-configuration");
@@ -121,12 +118,26 @@ export default function InitialConfigurationPage() {
   const EDITABLE_KEYS = new Set<keyof FormState>(["email", "telefono", "direccion"]);
   const canEdit = (k: keyof FormState) => isEditable && EDITABLE_KEYS.has(k);
 
+  // 🔖 pequeño badge visual por campo
+  const Badge = ({ editable }: { editable: boolean }) => (
+    <span
+      className={
+        "ml-2 inline-block align-middle rounded-full px-2 py-0.5 text-[10px] font-medium " +
+        (editable
+          ? "bg-green-100 text-green-700 border border-green-200"
+          : "bg-neutral-100 text-neutral-600 border border-neutral-200")
+      }
+    >
+      {editable ? "Editable" : "No editable"}
+    </span>
+  );
+
   return (
     <>
       <main className="h-dvh flex flex-col lg:flex-row">
         {/* Columna izquierda scrollable */}
         <section
-          ref={scrollRef} // 👈 ref para controlar el scroll
+          ref={scrollRef}
           className="flex-1 h-dvh bg-[var(--color-header)] flex flex-col px-6 lg:px-12 py-10 overflow-auto"
         >
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-8">
@@ -151,6 +162,8 @@ export default function InitialConfigurationPage() {
                       setIsEditable((v) => !v);
                       setSaved(false);
                       setError(null);
+                      // llevar el scroll arriba cuando entras en modo edición
+                      setTimeout(scrollToTopOfForm, 0);
                     }}
                     className="font-medium underline text-[var(--color-brand)] cursor-pointer transition hover:brightness-110"
                   >
@@ -158,12 +171,33 @@ export default function InitialConfigurationPage() {
                   </button>
                   .
                 </p>
+
+                {/* 🛈 Leyenda de edición */}
+                  {isEditable && (
+                    <div
+                      className="mt-3 rounded-lg border px-3 py-2 text-sm"
+                      style={{
+                        borderColor: "var(--color-brand-600)",
+                        backgroundColor: "var(--color-header)",
+                        color: "var(--color-brand-600)",
+                      }}
+                    >
+                      <p className="font-medium" style={{ color: "var(--color-brand)" }}>
+                        Modo edición
+                      </p>
+                      <p>
+                        Puedes editar: <strong>email</strong>, <strong>teléfono</strong> y{" "}
+                        <strong>dirección</strong>. Los demás campos son de solo lectura.
+                      </p>
+                    </div>
+                  )}
+
                 {saved && (
-                  <p className="mt-2 text-sm text-green-600">
+                  <p className="mt-3 text-sm text-green-600">
                     Cambios guardados correctamente.
                   </p>
                 )}
-                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
               </header>
 
               {loadingInitial ? (
@@ -171,94 +205,142 @@ export default function InitialConfigurationPage() {
               ) : (
                 <section className="relative">
                   <div className="space-y-6">
-                    <TextFieldLine
-                      label="Email"
-                      name="email"
-                      type="email"
-                      value={form.email ?? ""}
-                      icon={<EnvelopeIcon className="h-5 w-5" />}
-                      placeholder="usuario@ejemplo.com"
-                      pattern={/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/}
-                      errorMessage="Ingresa un correo válido"
-                      required
-                      validateOnBlur
-                      readOnly={!canEdit("email")}
-                      onChange={set("email")}
-                    />
+                    <div className={isEditable && !canEdit("email") ? "opacity-70" : ""}>
+                      <div className="flex items-center">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Email
+                        </label>
+                        {isEditable && <Badge editable={canEdit("email")} />}
+                      </div>
+                      <TextFieldLine
+                        label="" // ya pusimos el label arriba para poder poner el badge
+                        name="email"
+                        type="email"
+                        value={form.email ?? ""}
+                        icon={<EnvelopeIcon className="h-5 w-5" />}
+                        placeholder="usuario@ejemplo.com"
+                        pattern={/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/}
+                        errorMessage="Ingresa un correo válido"
+                        required
+                        validateOnBlur
+                        readOnly={!canEdit("email")}
+                        onChange={set("email")}
+                      />
+                    </div>
 
-                    <TextFieldLine
-                      label="Nombre"
-                      name="nombre"
-                      value={form.nombre ?? ""}
-                      icon={<BuildingOfficeIcon className="h-5 w-5" />}
-                      placeholder="Nombre del conjunto residencial"
-                      pattern={/^.+$/}
-                      errorMessage="El nombre no puede estar vacío"
-                      required
-                      validateOnBlur
-                      readOnly={!canEdit("nombre")}
-                      onChange={set("nombre")}
-                    />
+                    <div className={isEditable && !canEdit("nombre") ? "opacity-70" : ""}>
+                      <div className="flex items-center">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Nombre
+                        </label>
+                        {isEditable && <Badge editable={canEdit("nombre")} />}
+                      </div>
+                      <TextFieldLine
+                        label=""
+                        name="nombre"
+                        value={form.nombre ?? ""}
+                        icon={<BuildingOfficeIcon className="h-5 w-5" />}
+                        placeholder="Nombre del conjunto residencial"
+                        pattern={/^.+$/}
+                        errorMessage="El nombre no puede estar vacío"
+                        required
+                        validateOnBlur
+                        readOnly={!canEdit("nombre")}
+                        onChange={set("nombre")}
+                      />
+                    </div>
 
-                    <TextFieldLine
-                      label="Teléfono"
-                      name="telefono"
-                      type="text"
-                      value={form.telefono ?? ""}
-                      icon={<PhoneIcon className="h-5 w-5" />}
-                      placeholder="Ej: 3204578787"
-                      allowedPattern={/^\d{0,10}$/}
-                      pattern={/^\d{10}$/}
-                      errorMessage="El teléfono debe tener 10 dígitos numéricos"
-                      required
-                      validateOnBlur
-                      readOnly={!canEdit("telefono")}
-                      onChange={set("telefono")}
-                    />
+                    <div className={isEditable && !canEdit("telefono") ? "opacity-70" : ""}>
+                      <div className="flex items-center">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Teléfono
+                        </label>
+                        {isEditable && <Badge editable={canEdit("telefono")} />}
+                      </div>
+                      <TextFieldLine
+                        label=""
+                        name="telefono"
+                        type="text"
+                        value={form.telefono ?? ""}
+                        icon={<PhoneIcon className="h-5 w-5" />}
+                        placeholder="Ej: 3204578787"
+                        allowedPattern={/^\d{0,10}$/}
+                        pattern={/^\d{10}$/}
+                        errorMessage="El teléfono debe tener 10 dígitos numéricos"
+                        required
+                        validateOnBlur
+                        readOnly={!canEdit("telefono")}
+                        onChange={set("telefono")}
+                      />
+                    </div>
 
-                    <TextFieldLine
-                      label="Ciudad"
-                      name="ciudad"
-                      value={form.ciudad ?? ""}
-                      icon={<MapPinIcon className="h-5 w-5" />}
-                      placeholder="Bogotá D.C."
-                      pattern={/^.+$/}
-                      errorMessage="La ciudad no puede estar vacía"
-                      required
-                      validateOnBlur
-                      readOnly={!canEdit("ciudad")}
-                      onChange={set("ciudad")}
-                    />
+                    <div className={isEditable && !canEdit("ciudad") ? "opacity-70" : ""}>
+                      <div className="flex items-center">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Ciudad
+                        </label>
+                        {isEditable && <Badge editable={canEdit("ciudad")} />}
+                      </div>
+                      <TextFieldLine
+                        label=""
+                        name="ciudad"
+                        value={form.ciudad ?? ""}
+                        icon={<MapPinIcon className="h-5 w-5" />}
+                        placeholder="Bogotá D.C."
+                        pattern={/^.+$/}
+                        errorMessage="La ciudad no puede estar vacía"
+                        required
+                        validateOnBlur
+                        readOnly={!canEdit("ciudad")}
+                        onChange={set("ciudad")}
+                      />
+                    </div>
 
-                    <TextFieldLine
-                      label="Dirección"
-                      name="direccion"
-                      value={form.direccion ?? ""}
-                      icon={<MapPinIcon className="h-5 w-5" />}
-                      placeholder="Cl. 74 Sur # 82G-20, Bosa"
-                      pattern={/^.+$/}
-                      errorMessage="La dirección no puede estar vacía"
-                      required
-                      validateOnBlur
-                      readOnly={!canEdit("direccion")}
-                      onChange={set("direccion")}
-                    />
+                    <div className={isEditable && !canEdit("direccion") ? "opacity-70" : ""}>
+                      <div className="flex items-center">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Dirección
+                        </label>
+                        {isEditable && <Badge editable={canEdit("direccion")} />}
+                      </div>
+                      <TextFieldLine
+                        label=""
+                        name="direccion"
+                        value={form.direccion ?? ""}
+                        icon={<MapPinIcon className="h-5 w-5" />}
+                        placeholder="Cl. 74 Sur # 82G-20, Bosa"
+                        pattern={/^.+$/}
+                        errorMessage="La dirección no puede estar vacía"
+                        required
+                        validateOnBlur
+                        readOnly={!canEdit("direccion")}
+                        onChange={set("direccion")}
+                      />
+                    </div>
 
-                    <TextFieldLine
-                      label="Cantidad de parqueaderos"
-                      name="parqueaderos"
-                      type="text"
-                      value={form.parqueaderos ?? ""}
-                      icon={<BuildingOfficeIcon className="h-5 w-5" />}
-                      placeholder="245"
-                      allowedPattern={/^\d*$/}
-                      pattern={/^\d+$/}
-                      errorMessage="Solo se permiten números"
-                      required
-                      validateOnBlur
-                      readOnly={!canEdit("parqueaderos")}
-                      onChange={set("parqueaderos")}
-                    />
+                    <div className={isEditable && !canEdit("parqueaderos") ? "opacity-70" : ""}>
+                      <div className="flex items-center">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Cantidad de parqueaderos
+                        </label>
+                        {isEditable && <Badge editable={canEdit("parqueaderos")} />}
+                      </div>
+                      <TextFieldLine
+                        label=""
+                        name="parqueaderos"
+                        type="text"
+                        value={form.parqueaderos ?? ""}
+                        icon={<BuildingOfficeIcon className="h-5 w-5" />}
+                        placeholder="245"
+                        allowedPattern={/^\d*$/}
+                        pattern={/^\d+$/}
+                        errorMessage="Solo se permiten números"
+                        required
+                        validateOnBlur
+                        readOnly={!canEdit("parqueaderos")}
+                        onChange={set("parqueaderos")}
+                      />
+                    </div>
                   </div>
                 </section>
               )}
@@ -276,7 +358,7 @@ export default function InitialConfigurationPage() {
               </div>
             </form>
 
-            {/* Botón Confirmar (deshabilitado si se edita o si hay loading) */}
+            {/* Botón Confirmar */}
             <div className="flex justify-center mb-8">
               <Button
                 variant="primary"
