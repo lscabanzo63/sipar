@@ -10,8 +10,19 @@ export type RuleToggleCardProps = {
   enabled?: boolean;
   defaultEnabled?: boolean;
   onToggle?: (enabled: boolean) => void;
+
+  // Botón "Configurar"
   onOpenModal?: () => void;
   actionLabel?: string;
+
+  // Botón "Información"
+  onOpenInfo?: () => void;
+  infoLabel?: string;
+
+  // Control desde la page
+  hideInfoButton?: boolean;
+  hideConfigureButton?: boolean;
+
   helperText?: string;
   disabled?: boolean;
   className?: string;
@@ -24,8 +35,16 @@ export default function RuleToggleCard({
   enabled,
   defaultEnabled = false,
   onToggle,
+
   onOpenModal,
   actionLabel = "Configurar",
+
+  onOpenInfo,
+  infoLabel = "Información",
+
+  hideInfoButton = false,
+  hideConfigureButton = false,
+
   helperText,
   disabled,
   className,
@@ -49,7 +68,7 @@ export default function RuleToggleCard({
     onToggle?.(next);
   };
 
-  const handleOpen = () => {
+  const handleOpenConfigure = () => {
     if (disabled) return;
     onOpenModal?.();
     if (domEventKey) {
@@ -60,12 +79,15 @@ export default function RuleToggleCard({
     }
   };
 
+  const handleOpenInfo = () => {
+    if (disabled) return;
+    onOpenInfo?.();
+  };
+
   return (
     <div
       className={cn(
-        "flex items-start justify-between gap-4 rounded-2xl border bg-white p-4",
-        "transition-all duration-200 ease-out shadow-sm",
-        // 🔹 Estilos “brand”
+        "flex items-start justify-between gap-4 rounded-2xl border bg-white p-4 transition-all duration-200 ease-out shadow-sm",
         isOn
           ? "border-[var(--color-brand)] shadow-[0_0_0_3px_rgba(85,35,115,0.08)]"
           : "border-neutral-200 hover:shadow-[0_0_0_2px_rgba(85,35,115,0.15)]",
@@ -81,8 +103,8 @@ export default function RuleToggleCard({
         )}
       </div>
 
-      {/* Switch + botón */}
-      <div className="flex w-[140px] shrink-0 flex-col items-end gap-2">
+      {/* Switch + botones */}
+      <div className="flex shrink-0 flex-col items-end gap-2">
         {/* Switch accesible */}
         <button
           id={switchId}
@@ -108,16 +130,29 @@ export default function RuleToggleCard({
           />
         </button>
 
-        {/* Botón acción */}
-        <Button
-
-          size="sm"
-          onClick={handleOpen}
-          disabled={disabled}
-          fullWidth
-        >
-          {actionLabel}
-        </Button>
+        {/* Botones en horizontal - ambos variant="primary" (morado) */}
+        <div className="flex items-center gap-2">
+          {!hideInfoButton && (
+            <Button
+              size="sm"
+              variant="primary"   // <— mismo estilo que “Configurar”
+              onClick={handleOpenInfo}
+              disabled={disabled}
+            >
+              {infoLabel}
+            </Button>
+          )}
+          {!hideConfigureButton && (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleOpenConfigure}
+              disabled={disabled}
+            >
+              {actionLabel}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
