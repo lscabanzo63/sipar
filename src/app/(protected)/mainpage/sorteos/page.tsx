@@ -5,6 +5,7 @@ import RuleToggleCard from "@/components/ui/RuleToggleCard";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { InfoModal } from "@/components/ui/InfoModal";
+import { ConfigureModal } from "@/components/ui/ConfigureModal";
 
 type Rule = { id: string; text: string; enabled: boolean };
 type Periodicidad = "TRIMESTRAL" | "CUATRIMESTRAL" | "SEMESTRAL" | null;
@@ -13,19 +14,27 @@ const RULE_INFO: Record<string, { title: string; description: string }> = {
   "rule-1": {
     title: "Prioridad entre propietarios y arrendatarios",
     description:
-      "Si el habitante es propietario, tiene prioridad sobre arrendatarios en la asignación. Primero se asigna a propietarios.",
+      "Si el habitante es propietario, tiene prioridad sobre arrendatarios en la asignación de cupos. Primero se asignan los parqueaderos a propietarios y, si quedan disponibles, se continúa con arrendatarios. Esta prioridad busca reconocer la titularidad del inmueble sin excluir a los demás cuando exista capacidad.",
   },
   "rule-2": {
     title: "Pago de administración al día",
     description:
-      "Solo participan quienes no tienen retrasos en el pago de la administración.",
+      "Solo participan quienes estén al día en el pago de la administración, es decir, sin cuotas vencidas ni acuerdos incumplidos. Esta regla promueve la cultura de pago oportuno y garantiza condiciones justas de participación. En caso de morosidad, el usuario quedará temporalmente inhabilitado hasta regularizar su estado.",
   },
   "rule-3": {
     title: "Rotación por participación (N veces)",
     description:
-      "Quien haya participado N sorteos consecutivos queda excluido del siguiente (N+1). N se ajusta según la periodicidad.",
+      "Quien haya participado en N sorteos consecutivos queda excluido del siguiente (N+1) para favorecer la rotación de beneficiarios. El valor de N se configura según la periodicidad elegida y debe mantener coherencia.",
   },
 };
+
+// Helper para opciones válidas de N según periodicidad
+function getNOptions(periodicidad: Periodicidad): number[] {
+  if (periodicidad === "SEMESTRAL") return [1];      // 2 veces al año: N = 1
+  if (periodicidad === "CUATRIMESTRAL") return [1, 2]; // 3 veces al año: N = 1,2
+  if (periodicidad === "TRIMESTRAL") return [1, 2, 3]; // 4 veces al año: N = 1,2,3
+  return [];
+}
 
 export default function SorteosPage() {
   const [rules, setRules] = React.useState<Rule[]>([
@@ -35,15 +44,6 @@ export default function SorteosPage() {
   ]);
 
   const [startDate, setStartDate] = React.useState<string>("");
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [selectedRule, setSelectedRule] = React.useState<Rule | null>(null);
-
-  // Modal de Información (átomo)
-  const [infoModal, setInfoModal] = React.useState<{ open: boolean; title: string; description: string }>({
-    open: false,
-    title: "",
-    description: "",
-  });
 
   // Periodicidad (checkboxes exclusivos) + log
   const [periodicidad, setPeriodicidad] = React.useState<Periodicidad>(null);
@@ -55,20 +55,45 @@ export default function SorteosPage() {
     });
   };
 
-  const handleToggle =
-    (id: string) =>
-    (enabled: boolean) => {
-      setRules((prev) => prev.map((r) => (r.id === id ? { ...r, enabled } : r)));
+  // Modal de Información (átomo)
+  const [infoModal, setInfoModal] = React.useState<{ open: boolean; title: string; description: string }>({
+    open: false,
+    title: "",
+    description: "",
+  });
+
+  // Modal de Configurar (átomo)
+  const [configOpen, setConfigOpen] = React.useState(false);
+  const [configN, setConfigN] = React.useState<number | null>(null);
+
+  // Listener del evento de "Configurar" emitido por la tarjeta (domEventKey)
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      // Detalle del evento: { id, enabled, mainText }
+      const ce = e as CustomEvent<{ id: string; enabled: boolean; mainText: string }>;
+      // Solo abrimos modal cuando venga de la regla de Rotación (rule-3),
+      // pero puedes quitar esta condición si quieres mostrar para cualquiera.
+      if (!ce.detail) return;
+      // Abre el modal de configuración
+      setConfigOpen(true);
+      // Reset N si cambió la periodicidad
+      const options = getNOptions(periodicidad);
+      setConfigN(options[0] ?? null);
     };
 
-  const handleOpenModal = (rule: Rule) => {
-    setSelectedRule(rule);
-    setModalOpen(true);
-  };
+    window.addEventListener("open-config-rule", handler as EventListener);
+    return () => window.removeEventListener("open-config-rule", handler as EventListener);
+  }, [periodicidad]);
 
+  // Callbacks abrir/cerrar modales
   const handleOpenInfo = (rule: Rule) => {
     const info = RULE_INFO[rule.id] ?? { title: rule.text, description: "" };
     setInfoModal({ open: true, title: info.title, description: info.description });
+  };
+
+  const saveConfig = () => {
+    console.log("Guardando configuración de Rotación, N =", configN, "periodicidad =", periodicidad);
+    setConfigOpen(false);
   };
 
   return (
@@ -124,29 +149,20 @@ export default function SorteosPage() {
             key={rule.id}
             mainText={rule.text}
             enabled={rule.enabled}
-            onToggle={handleToggle(rule.id)}
+            onToggle={(en) =>
+              setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, enabled: en } : r)))
+            }
             // Control de visibilidad de botones
             hideConfigureButton={idx < 2}   // primeras 2 sin "Configurar"
             hideInfoButton={false}          // todas con "Información"
             onOpenInfo={() => handleOpenInfo(rule)}
-            onOpenModal={() => handleOpenModal(rule)} // visible en la última
+            onOpenModal={() => { /* redundante: abrimos por evento */ }}
             infoLabel="Información"
             actionLabel="Configurar"
+            domEventKey="open-config-rule"  // <- emite evento global que escuchamos en useEffect
           />
         ))}
       </div>
-
-      {/* Modal de Configurar (existente) */}
-      {modalOpen && (
-        <ModalShell onClose={() => setModalOpen(false)}>
-          <h3 className="mb-1 text-lg font-semibold">Configurar regla</h3>
-          <p className="mb-4 text-sm text-neutral-600">{selectedRule?.text}</p>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setModalOpen(false)}>Cerrar</Button>
-            <Button onClick={() => setModalOpen(false)}>Guardar</Button>
-          </div>
-        </ModalShell>
-      )}
 
       {/* Modal de Información (átomo) */}
       <InfoModal
@@ -154,6 +170,19 @@ export default function SorteosPage() {
         title={infoModal.title}
         description={infoModal.description}
         onClose={() => setInfoModal({ open: false, title: "", description: "" })}
+      />
+
+      {/* Modal de Configurar (átomo) */}
+      <ConfigureModal
+        open={configOpen}
+        title="Configurar rotación por participación"
+        description="Define el valor de N para la regla de rotación. Si un residente ha participado en N sorteos consecutivos, quedará excluido del siguiente (N+1)."
+        nValue={configN}
+        nOptions={getNOptions(periodicidad)}
+        onChangeN={setConfigN}
+        onClose={() => setConfigOpen(false)}
+        onSave={saveConfig}
+        disabled={getNOptions(periodicidad).length === 0}
       />
     </section>
   );
@@ -183,27 +212,5 @@ function Checkbox({
       />
       <span className="select-none text-sm text-neutral-800">{label}</span>
     </label>
-  );
-}
-
-// (Tu modal simple existente si aún lo necesitas)
-function ModalShell({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div
-        className="relative z-10 mx-auto mt-24 w-full max-w-md rounded-2xl bg-white p-5 shadow-lg"
-        role="dialog"
-        aria-modal="true"
-      >
-        {children}
-      </div>
-    </div>
   );
 }
