@@ -13,6 +13,11 @@ export type DateFieldProps = Omit<
   className?: string;
   value?: string;                   // YYYY-MM-DD
   onChange?: (value: string) => void;
+
+  /** Si true, usa la fecha de hoy (local) como 'min' por defecto.
+   *  Si además pasas 'min' manualmente, tiene prioridad tu 'min'.
+   */
+  minToday?: boolean;
 };
 
 const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -27,6 +32,15 @@ const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+/** YYYY-MM-DD local (para min/max en <input type="date" />) */
+function todayISOLocal(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export const DateField = React.forwardRef<HTMLInputElement, DateFieldProps>(
   (
     {
@@ -39,6 +53,7 @@ export const DateField = React.forwardRef<HTMLInputElement, DateFieldProps>(
       helperText,
       error,
       className,
+      minToday = false,
       ...rest // disabled, min, max, etc.
     },
     ref
@@ -52,6 +67,9 @@ export const DateField = React.forwardRef<HTMLInputElement, DateFieldProps>(
 
     const hasError = Boolean(error);
     const isDisabled = Boolean(rest.disabled);
+
+    // Si no viene 'min' y el consumidor pide minToday, usamos hoy local
+    const computedMin = rest.min ?? (minToday ? todayISOLocal() : undefined);
 
     return (
       <div className={cn("w-full", className)}>
@@ -94,6 +112,8 @@ export const DateField = React.forwardRef<HTMLInputElement, DateFieldProps>(
             aria-invalid={hasError || undefined}
             aria-describedby={describedById}
             onChange={(e) => onChange?.(e.target.value)}
+            min={computedMin}
+            // max: si el consumidor pasa 'max' en rest, React lo aplica igual
             className={cn(
               "peer h-full w-full border-0 bg-transparent p-0 text-sm text-neutral-900 focus:outline-none focus:ring-0",
               // Oculta el ícono nativo de WebKit y deja el nuestro

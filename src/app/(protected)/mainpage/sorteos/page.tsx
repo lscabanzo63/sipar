@@ -1,3 +1,4 @@
+// app/(protected)/mainpage/sorteos/page.tsx
 "use client";
 
 import * as React from "react";
@@ -10,7 +11,7 @@ import { ConfigureModal } from "@/components/ui/ConfigureModal";
 type Rule = { id: string; text: string; enabled: boolean };
 type Periodicidad = "TRIMESTRAL" | "CUATRIMESTRAL" | "SEMESTRAL" | null;
 
-// Mapeo de regla -> tipo de payload
+// Map de tipos para el payload
 const RULE_TYPE: Record<string, "PRIORIDAD_PROPIETARIO" | "PAGO_ADMINISTRACION" | "ROTACION"> = {
   "rule-1": "PRIORIDAD_PROPIETARIO",
   "rule-2": "PAGO_ADMINISTRACION",
@@ -43,7 +44,7 @@ function getRotationOptions(periodicidad: Periodicidad): number[] {
   return [];
 }
 
-// Descripción (sin letras técnicas)
+// Descripción pedagógica (sin tecnicismos)
 function getRotationDescription(periodicidad: Periodicidad): string {
   if (periodicidad === "SEMESTRAL") {
     return (
@@ -74,15 +75,10 @@ function getRotationDescription(periodicidad: Periodicidad): string {
   return "Selecciona una periodicidad para ver las opciones de cuántos sorteos seguidos se permiten antes de descansar.";
 }
 
-// Convierte "dd/mm/aaaa" a "YYYY-MM-DDT00:00:00" (24h)
-function toISOWithMidnight(dateStr: string): string | null {
-  if (!dateStr) return null;
-  const parts = dateStr.replaceAll(" ", "").split("/");
-  if (parts.length !== 3) return null;
-  const [dd, mm, yyyy] = parts.map((x) => Number(x));
-  if (!dd || !mm || !yyyy) return null;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${yyyy}-${pad(mm)}-${pad(dd)}T00:00:00`;
+/** Devuelve `YYYY-MM-DDT00:00:00` a partir del valor del DateField (YYYY-MM-DD) */
+function withMidnight(dateYYYYMMDD: string | null | undefined): string | null {
+  if (!dateYYYYMMDD) return null;
+  return `${dateYYYYMMDD}T00:00:00`;
 }
 
 export default function SorteosPage() {
@@ -92,6 +88,7 @@ export default function SorteosPage() {
     { id: "rule-3", text: "Rotación por participación", enabled: false },
   ]);
 
+  // DateField trabaja con YYYY-MM-DD
   const [startDate, setStartDate] = React.useState<string>("");
 
   // Periodicidad
@@ -101,22 +98,21 @@ export default function SorteosPage() {
     console.log("Periodicidad seleccionada:", value);
   };
 
-  // Info modal
+  // Modales
   const [infoModal, setInfoModal] = React.useState<{ open: boolean; title: string; description: string }>({
     open: false,
     title: "",
     description: "",
   });
 
-  // Config modal (rotación)
   const [configOpen, setConfigOpen] = React.useState(false);
   const [rotationCount, setRotationCount] = React.useState<number | null>(null);
 
-  // Escucha evento "Configurar" de la card
+  // Abrir modal de configurar desde la card (evento)
   React.useEffect(() => {
     const handler = () => {
       setConfigOpen(true);
-      setRotationCount(null); // no preseleccionar
+      setRotationCount(null); // sin preseleccionar
     };
     window.addEventListener("open-config-rule", handler as EventListener);
     return () => window.removeEventListener("open-config-rule", handler as EventListener);
@@ -147,9 +143,10 @@ export default function SorteosPage() {
   const canConfirm =
     Boolean(startDate) && Boolean(periodicidad) && anyRuleEnabled && rotationIsConfigured;
 
-  // Construcción del payload y log formateado
+  // Construcción del payload y log
   const onConfirm = () => {
-    const fechaISO = toISOWithMidnight(startDate);
+    const fechaISO = withMidnight(startDate); // YYYY-MM-DDT00:00:00
+
     const normas = rules.map((r) => {
       const tipo = RULE_TYPE[r.id];
       if (tipo === "ROTACION") {
@@ -182,13 +179,15 @@ export default function SorteosPage() {
       {/* Fecha de inicio + Periodicidad */}
       <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2 sm:items-start sm:gap-10">
+          {/* Fecha de inicio: usa minToday para bloquear pasadas */}
           <div className="min-w-[220px]">
             <DateField
               id="fecha-inicio"
               name="fechaInicio"
               label="Fecha de inicio"
-              value={startDate}
+              value={startDate}           // YYYY-MM-DD
               onChange={setStartDate}
+              minToday                    // ⬅️ no permite fechas anteriores a hoy
             />
           </div>
 
@@ -220,7 +219,7 @@ export default function SorteosPage() {
         </div>
       </section>
 
-      {/* Tarjetas de reglas */}
+      {/* Cards de reglas */}
       <div className="mt-6 space-y-4">
         {rules.map((rule, idx) => (
           <RuleToggleCard
@@ -230,10 +229,10 @@ export default function SorteosPage() {
             onToggle={(en) =>
               setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, enabled: en } : r)))
             }
-            hideConfigureButton={idx < 2}        // 2 primeras sin “Configurar”
-            hideInfoButton={false}               // todas con “Información”
+            hideConfigureButton={idx < 2}   // 2 primeras sin “Configurar”
+            hideInfoButton={false}          // todas con “Información”
             onOpenInfo={() => handleOpenInfo(rule)}
-            onOpenModal={() => { /* abrir por evento */ }}
+            onOpenModal={() => { /* se abre por evento */ }}
             infoLabel="Información"
             actionLabel="Configurar"
             domEventKey="open-config-rule"
@@ -241,7 +240,7 @@ export default function SorteosPage() {
         ))}
       </div>
 
-      {/* Footer de página: Confirmar */}
+      {/* Footer: Confirmar */}
       <div className="mt-8 flex justify-end">
         <Button onClick={onConfirm} disabled={!canConfirm}>
           Confirmar
