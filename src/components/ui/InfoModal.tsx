@@ -9,6 +9,11 @@ type InfoModalProps = {
   title: string;
   description: string;
   onClose: () => void;
+
+  // Nuevo: acción Guardar opcional
+  onSave?: () => void;
+  saveLabel?: string;
+
   className?: string;
 };
 
@@ -17,9 +22,10 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   title,
   description,
   onClose,
+  onSave,
+  saveLabel = "Guardar",
   className,
 }) => {
-  const dialogRef = React.useRef<HTMLDivElement>(null);
   const titleId = React.useId();
   const descId = React.useId();
 
@@ -43,13 +49,9 @@ export const InfoModal: React.FC<InfoModalProps> = ({
       aria-describedby={descId}
     >
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       {/* Dialog */}
       <div
-        ref={dialogRef}
         className={clsx(
           "relative z-10 mx-auto mt-24 w-full max-w-md rounded-2xl bg-white p-5 shadow-lg",
           className
@@ -64,8 +66,15 @@ export const InfoModal: React.FC<InfoModalProps> = ({
           </p>
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <Button onClick={onClose}>Entendido</Button>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          {onSave && (
+            <Button onClick={onSave}>
+              {saveLabel}
+            </Button>
+          )}
         </div>
       </div>
     </div>

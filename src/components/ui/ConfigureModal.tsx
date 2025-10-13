@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/Button";
 type ConfigureModalProps = {
   open: boolean;
   title: string;
-  description: string;
+  description: string;      // texto pedagógico (puede contener \n)
   nValue: number | null;
-  nOptions: number[];                  // Opciones válidas para N según periodicidad
+  nOptions: number[];       // opciones válidas según periodicidad
   onChangeN: (n: number | null) => void;
   onClose: () => void;
   onSave: () => void;
-  disabled?: boolean;                  // Deshabilita acciones cuando no hay periodicidad
+  disabled?: boolean;       // deshabilita acciones si no hay periodicidad
   className?: string;
 };
 
@@ -55,6 +55,7 @@ export const ConfigureModal: React.FC<ConfigureModalProps> = ({
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
       {/* Dialog */}
       <div
         className={clsx(
@@ -65,7 +66,12 @@ export const ConfigureModal: React.FC<ConfigureModalProps> = ({
         <h3 id={titleId} className="text-lg font-semibold text-neutral-900">
           {title}
         </h3>
-        <p id={descId} className="mt-1 text-sm text-neutral-700">
+
+        {/* Permite saltos de línea con \n */}
+        <p
+          id={descId}
+          className="mt-2 whitespace-pre-line text-sm leading-relaxed text-neutral-700"
+        >
           {description}
         </p>
 
@@ -77,7 +83,7 @@ export const ConfigureModal: React.FC<ConfigureModalProps> = ({
           <select
             id="select-n"
             className="mt-1 w-full rounded-[var(--radius-ctrl)] border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
-            value={nValue ?? ""}
+            value={nValue ?? ""}                 // <- siempre placeholder si no hay elección
             onChange={(e) => {
               const v = e.target.value === "" ? null : Number(e.target.value);
               onChangeN(v);
@@ -94,7 +100,7 @@ export const ConfigureModal: React.FC<ConfigureModalProps> = ({
 
           {!hasOptions && (
             <p className="mt-2 text-xs text-amber-600">
-              Selecciona primero una periodicidad para habilitar los valores de N.
+              Selecciona primero una periodicidad (trimestral, cuatrimestral o semestral) para habilitar los valores de N.
             </p>
           )}
         </div>
@@ -103,10 +109,7 @@ export const ConfigureModal: React.FC<ConfigureModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button
-            onClick={onSave}
-            disabled={disabled || !nValue}
-          >
+          <Button onClick={onSave} disabled={disabled || !nValue}>
             Guardar
           </Button>
         </div>
