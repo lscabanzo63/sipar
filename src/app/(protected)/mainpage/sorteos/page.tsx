@@ -10,11 +10,18 @@ import { ConfigureModal } from "@/components/ui/ConfigureModal";
 type Rule = { id: string; text: string; enabled: boolean };
 type Periodicidad = "TRIMESTRAL" | "CUATRIMESTRAL" | "SEMESTRAL" | null;
 
+// Mapeo de regla -> tipo de payload
+const RULE_TYPE: Record<string, "PRIORIDAD_PROPIETARIO" | "PAGO_ADMINISTRACION" | "ROTACION"> = {
+  "rule-1": "PRIORIDAD_PROPIETARIO",
+  "rule-2": "PAGO_ADMINISTRACION",
+  "rule-3": "ROTACION",
+};
+
 const RULE_INFO: Record<string, { title: string; description: string }> = {
   "rule-1": {
     title: "Prioridad entre propietarios y arrendatarios",
     description:
-      "Primero se asignan parqueaderos a propietarios y, si quedan disponibles, se continúa con arrendatarios. Esta prioridad reconoce la titularidad del inmueble, pero no excluye a los demás cuando haya cupos.",
+      "Primero se asignan parqueaderos a propietarios y, si quedan disponibles, se continúa con arrendatarios. Esta prioridad reconoce la titularidad del inmueble sin excluir a los demás cuando haya cupos.",
   },
   "rule-2": {
     title: "Pago de administración al día",
@@ -30,44 +37,52 @@ const RULE_INFO: Record<string, { title: string; description: string }> = {
 
 // Opciones válidas según periodicidad
 function getRotationOptions(periodicidad: Periodicidad): number[] {
-  if (periodicidad === "SEMESTRAL") return [1];        // 2 al año
-  if (periodicidad === "CUATRIMESTRAL") return [1, 2]; // 3 al año
-  if (periodicidad === "TRIMESTRAL") return [1, 2, 3]; // 4 al año
+  if (periodicidad === "SEMESTRAL") return [1];
+  if (periodicidad === "CUATRIMESTRAL") return [1, 2];
+  if (periodicidad === "TRIMESTRAL") return [1, 2, 3];
   return [];
 }
 
-// Descripción pedagógica (sin “N”)
+// Descripción (sin letras técnicas)
 function getRotationDescription(periodicidad: Periodicidad): string {
   if (periodicidad === "SEMESTRAL") {
     return (
       "Periodicidad: Semestral (2 sorteos al año)\n" +
-      "Elige cuántos sorteos seguidos puede participar una persona antes de que tenga que descansar el siguiente.\n" +
-      "Valor permitido: 1.\n" +
-      "Ejemplo: si participó en el primer sorteo del año, descansará el segundo."
+      "Solo puedes elegir 1 sorteo seguido antes de descansar.\n" +
+      "Ejemplo: si participa en el primero, descansa el segundo."
     );
   }
   if (periodicidad === "CUATRIMESTRAL") {
     return (
       "Periodicidad: Cuatrimestral (3 sorteos al año)\n" +
-      "Opciones: 1 o 2 sorteos seguidos antes de descansar.\n" +
+      "Puedes elegir 1 o 2 sorteos seguidos antes de descansar.\n" +
       "Ejemplos:\n" +
-      "• Si eliges 1: quien participa en el sorteo A descansa en el B.\n" +
-      "• Si eliges 2: quien participa en A y B seguidos descansa en el C."
+      "• Con 1 seguido: participa en A, descansa en B.\n" +
+      "• Con 2 seguidos: participa en A y B, descansa en C."
     );
   }
   if (periodicidad === "TRIMESTRAL") {
     return (
       "Periodicidad: Trimestral (4 sorteos al año)\n" +
-      "Opciones: 1, 2 o 3 sorteos seguidos antes de descansar.\n" +
+      "Puedes elegir 1, 2 o 3 sorteos seguidos antes de descansar.\n" +
       "Ejemplos:\n" +
       "• 1 seguido → descansa el siguiente.\n" +
       "• 2 seguidos → descansa el tercero.\n" +
       "• 3 seguidos → descansa el cuarto."
     );
   }
-  return (
-    "Selecciona una periodicidad para ver las opciones de cuántos sorteos seguidos se permiten antes de descansar."
-  );
+  return "Selecciona una periodicidad para ver las opciones de cuántos sorteos seguidos se permiten antes de descansar.";
+}
+
+// Convierte "dd/mm/aaaa" a "YYYY-MM-DDT00:00:00" (24h)
+function toISOWithMidnight(dateStr: string): string | null {
+  if (!dateStr) return null;
+  const parts = dateStr.replaceAll(" ", "").split("/");
+  if (parts.length !== 3) return null;
+  const [dd, mm, yyyy] = parts.map((x) => Number(x));
+  if (!dd || !mm || !yyyy) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${yyyy}-${pad(mm)}-${pad(dd)}T00:00:00`;
 }
 
 export default function SorteosPage() {
@@ -79,39 +94,29 @@ export default function SorteosPage() {
 
   const [startDate, setStartDate] = React.useState<string>("");
 
-  // Periodicidad + log
+  // Periodicidad
   const [periodicidad, setPeriodicidad] = React.useState<Periodicidad>(null);
   const handlePeriodicidad = (value: Exclude<Periodicidad, null>) => {
-    setPeriodicidad((prev) => {
-      const next = prev === value ? null : value;
-      console.log("Periodicidad seleccionada:", next);
-      return next;
-    });
+    setPeriodicidad((prev) => (prev === value ? null : value));
+    console.log("Periodicidad seleccionada:", value);
   };
 
-  // Modal de Información
-  const [infoModal, setInfoModal] = React.useState<{
-    open: boolean;
-    title: string;
-    description: string;
-  }>({
+  // Info modal
+  const [infoModal, setInfoModal] = React.useState<{ open: boolean; title: string; description: string }>({
     open: false,
     title: "",
     description: "",
   });
 
-  // Modal de Configurar (rotación)
+  // Config modal (rotación)
   const [configOpen, setConfigOpen] = React.useState(false);
-  const [rotationCount, setRotationCount] = React.useState<number | null>(null); // cuántos seguidos antes de descansar
+  const [rotationCount, setRotationCount] = React.useState<number | null>(null);
 
-  // Escuchar evento emitido por RuleToggleCard al pulsar "Configurar"
+  // Escucha evento "Configurar" de la card
   React.useEffect(() => {
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<{ id: string; enabled: boolean; mainText: string }>;
-      if (!ce.detail) return;
-      // Abrir modal sin preseleccionar
+    const handler = () => {
       setConfigOpen(true);
-      setRotationCount(null);
+      setRotationCount(null); // no preseleccionar
     };
     window.addEventListener("open-config-rule", handler as EventListener);
     return () => window.removeEventListener("open-config-rule", handler as EventListener);
@@ -135,24 +140,38 @@ export default function SorteosPage() {
     setConfigOpen(false);
   };
 
-  // --- Habilitación del botón Confirmar ---
+  // Habilitación del botón Confirmar (página)
   const anyRuleEnabled = rules.some((r) => r.enabled);
   const rule3Enabled = rules.find((r) => r.id === "rule-3")?.enabled ?? false;
   const rotationIsConfigured = !rule3Enabled || (rule3Enabled && rotationCount !== null);
   const canConfirm =
-    Boolean(startDate) &&
-    Boolean(periodicidad) &&
-    anyRuleEnabled &&
-    rotationIsConfigured;
+    Boolean(startDate) && Boolean(periodicidad) && anyRuleEnabled && rotationIsConfigured;
 
+  // Construcción del payload y log formateado
   const onConfirm = () => {
-    console.log("Confirmando configuración:", {
-      startDate,
-      periodicidad,
-      reglas: rules,
-      rotacionSeguidosPermitidos: rotationCount,
+    const fechaISO = toISOWithMidnight(startDate);
+    const normas = rules.map((r) => {
+      const tipo = RULE_TYPE[r.id];
+      if (tipo === "ROTACION") {
+        return {
+          tipo,
+          activa: r.enabled,
+          parametros: r.enabled && rotationCount ? { n: rotationCount } : {},
+        };
+      }
+      return { tipo, activa: r.enabled, parametros: {} };
     });
-    // Aquí conectarías con tu API/acción real
+
+    const payload = {
+      data: {
+        periodicidad: periodicidad ?? "",
+        fecha_inicio: fechaISO ?? "",
+        normas,
+      },
+    };
+
+    console.log("Fecha (con hora 24h):", fechaISO);
+    console.log("Payload listo para servicio:", JSON.stringify(payload, null, 2));
   };
 
   return (
@@ -201,10 +220,7 @@ export default function SorteosPage() {
         </div>
       </section>
 
-      {/* Tarjetas de reglas:
-          - Primeras 2: solo Información
-          - Última: Información + Configurar
-          Además: botones deshabilitados si la regla no está activada (se maneja dentro de la card). */}
+      {/* Tarjetas de reglas */}
       <div className="mt-6 space-y-4">
         {rules.map((rule, idx) => (
           <RuleToggleCard
@@ -214,8 +230,8 @@ export default function SorteosPage() {
             onToggle={(en) =>
               setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, enabled: en } : r)))
             }
-            hideConfigureButton={idx < 2}   // primeras 2 sin “Configurar”
-            hideInfoButton={false}          // todas con “Información”
+            hideConfigureButton={idx < 2}        // 2 primeras sin “Configurar”
+            hideInfoButton={false}               // todas con “Información”
             onOpenInfo={() => handleOpenInfo(rule)}
             onOpenModal={() => { /* abrir por evento */ }}
             infoLabel="Información"
@@ -227,36 +243,18 @@ export default function SorteosPage() {
 
       {/* Footer de página: Confirmar */}
       <div className="mt-8 flex justify-end">
-        <Button
-          onClick={onConfirm}
-          disabled={!canConfirm}
-          title={
-            !startDate
-              ? "Selecciona una fecha de inicio"
-              : !periodicidad
-              ? "Selecciona una periodicidad"
-              : !anyRuleEnabled
-              ? "Activa al menos una regla"
-              : !rotationIsConfigured
-              ? "Configura la rotación cuando la regla de rotación está activa"
-              : undefined
-          }
-        >
+        <Button onClick={onConfirm} disabled={!canConfirm}>
           Confirmar
         </Button>
       </div>
 
-      {/* Modal de Información */}
+      {/* Modal de Información: un solo botón Confirmar */}
       <InfoModal
         open={infoModal.open}
         title={infoModal.title}
         description={infoModal.description}
+        onConfirm={() => setInfoModal({ open: false, title: "", description: "" })}
         onClose={() => setInfoModal({ open: false, title: "", description: "" })}
-        onSave={() => {
-          console.log("Guardado desde InfoModal:", infoModal.title);
-          setInfoModal({ open: false, title: "", description: "" });
-        }}
-        saveLabel="Guardar"
       />
 
       {/* Modal de Configurar (rotación) */}

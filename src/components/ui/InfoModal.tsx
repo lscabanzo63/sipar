@@ -8,12 +8,8 @@ type InfoModalProps = {
   open: boolean;
   title: string;
   description: string;
-  onClose: () => void;
-
-  // Nuevo: acción Guardar opcional
-  onSave?: () => void;
-  saveLabel?: string;
-
+  onConfirm: () => void;   // único botón
+  onClose: () => void;     // cierre por backdrop o ESC
   className?: string;
 };
 
@@ -21,9 +17,8 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   open,
   title,
   description,
+  onConfirm,
   onClose,
-  onSave,
-  saveLabel = "Guardar",
   className,
 }) => {
   const titleId = React.useId();
@@ -31,9 +26,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
 
   React.useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
@@ -50,6 +43,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
       {/* Dialog */}
       <div
         className={clsx(
@@ -66,15 +60,8 @@ export const InfoModal: React.FC<InfoModalProps> = ({
           </p>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
-          {onSave && (
-            <Button onClick={onSave}>
-              {saveLabel}
-            </Button>
-          )}
+        <div className="mt-6 flex justify-end">
+          <Button onClick={onConfirm}>Confirmar</Button>
         </div>
       </div>
     </div>
