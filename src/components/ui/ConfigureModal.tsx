@@ -100,7 +100,7 @@ export const ConfigureModal: React.FC<ConfigureModalProps> = ({
 
           {!hasOptions && (
             <p className="mt-2 text-xs text-amber-600">
-              Selecciona primero una periodicidad (trimestral, cuatrimestral o semestral) para habilitar los valores de N.
+              Selecciona primero una periodicidad (trimestral, cuatrimestral o semestral) para habilitar los valores de rotacion.
             </p>
           )}
         </div>

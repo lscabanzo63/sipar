@@ -14,73 +14,72 @@ const RULE_INFO: Record<string, { title: string; description: string }> = {
   "rule-1": {
     title: "Prioridad entre propietarios y arrendatarios",
     description:
-      "Si el habitante es propietario, tiene prioridad sobre arrendatarios en la asignación de cupos.\n\nResumen:\n• Primero se asignan parqueaderos a propietarios.\n• Luego participan arrendatarios si quedan cupos.\n\nObjetivo: reconocer la titularidad del inmueble sin excluir a los demás cuando exista capacidad.",
+      "Primero se asignan parqueaderos a propietarios y, si quedan disponibles, se continúa con arrendatarios. Esta prioridad reconoce la titularidad del inmueble, pero no excluye a los demás cuando haya cupos.",
   },
   "rule-2": {
     title: "Pago de administración al día",
     description:
-      "Solo participan quienes estén al día en la administración (sin cuotas vencidas ni acuerdos incumplidos).\n\nResumen:\n• La morosidad inhabilita temporalmente la participación.\n• Al normalizar pagos, se habilita nuevamente.\n\nObjetivo: fomentar el pago oportuno y asegurar condiciones justas.",
+      "Solo pueden participar quienes estén al día con la administración (sin cuotas vencidas ni acuerdos incumplidos). Si existe mora, la persona queda temporalmente inhabilitada hasta normalizar su estado.",
   },
   "rule-3": {
-    title: "Rotación por participación (N veces)",
+    title: "Rotación por participación",
     description:
-      "Evita que la misma persona gane continuamente.\n\nRegla:\n• Si alguien participó en N sorteos consecutivos, no puede participar en el siguiente (N+1).\n• N depende de la periodicidad para que tenga sentido (ver Configurar).",
+      "Para repartir las oportunidades, alguien que haya participado en varios sorteos seguidos deberá descansar el siguiente. Tú decides cuántos sorteos seguidos permite el sistema antes de forzar ese descanso.",
   },
 };
 
-// Opciones válidas de N según periodicidad
-function getNOptions(periodicidad: Periodicidad): number[] {
-  if (periodicidad === "SEMESTRAL") return [1];        // 2 veces/año
-  if (periodicidad === "CUATRIMESTRAL") return [1, 2]; // 3 veces/año
-  if (periodicidad === "TRIMESTRAL") return [1, 2, 3]; // 4 veces/año
+// Opciones válidas según periodicidad
+function getRotationOptions(periodicidad: Periodicidad): number[] {
+  if (periodicidad === "SEMESTRAL") return [1];        // 2 al año
+  if (periodicidad === "CUATRIMESTRAL") return [1, 2]; // 3 al año
+  if (periodicidad === "TRIMESTRAL") return [1, 2, 3]; // 4 al año
   return [];
 }
 
-// Descripción pedagógica para el modal de configuración (con ejemplos)
-function getNDescription(periodicidad: Periodicidad): string {
+// Descripción pedagógica (sin “N”)
+function getRotationDescription(periodicidad: Periodicidad): string {
   if (periodicidad === "SEMESTRAL") {
     return (
-      "Periodicidad: Semestral (2 veces al año)\n" +
-      "Valores permitidos de N: 1\n\n" +
-      "Ejemplo: con N = 1, si alguien participó en el sorteo 1, queda excluido del sorteo 2; " +
-      "volverá a poder participar en el siguiente ciclo."
+      "Periodicidad: Semestral (2 sorteos al año)\n" +
+      "Elige cuántos sorteos seguidos puede participar una persona antes de que tenga que descansar el siguiente.\n" +
+      "Valor permitido: 1.\n" +
+      "Ejemplo: si participó en el primer sorteo del año, descansará el segundo."
     );
   }
   if (periodicidad === "CUATRIMESTRAL") {
     return (
-      "Periodicidad: Cuatrimestral (3 veces al año)\n" +
-      "Valores permitidos de N: 1 o 2\n\n" +
+      "Periodicidad: Cuatrimestral (3 sorteos al año)\n" +
+      "Opciones: 1 o 2 sorteos seguidos antes de descansar.\n" +
       "Ejemplos:\n" +
-      "• N = 1: si participó en el sorteo A, queda excluido del sorteo B.\n" +
-      "• N = 2: si participó en A y B consecutivos, queda excluido del sorteo C."
+      "• Si eliges 1: quien participa en el sorteo A descansa en el B.\n" +
+      "• Si eliges 2: quien participa en A y B seguidos descansa en el C."
     );
   }
   if (periodicidad === "TRIMESTRAL") {
     return (
-      "Periodicidad: Trimestral (4 veces al año)\n" +
-      "Valores permitidos de N: 1, 2 o 3\n\n" +
+      "Periodicidad: Trimestral (4 sorteos al año)\n" +
+      "Opciones: 1, 2 o 3 sorteos seguidos antes de descansar.\n" +
       "Ejemplos:\n" +
-      "• N = 1: si participó en A, se excluye en B.\n" +
-      "• N = 2: si participó en A y B, se excluye en C.\n" +
-      "• N = 3: si participó en A, B y C, se excluye en D."
+      "• 1 seguido → descansa el siguiente.\n" +
+      "• 2 seguidos → descansa el tercero.\n" +
+      "• 3 seguidos → descansa el cuarto."
     );
   }
   return (
-    "Selecciona una periodicidad para ver valores permitidos de N.\n\n" +
-    "La idea: tras N participaciones consecutivas, la persona descansa el siguiente sorteo (N+1)."
+    "Selecciona una periodicidad para ver las opciones de cuántos sorteos seguidos se permiten antes de descansar."
   );
 }
 
 export default function SorteosPage() {
   const [rules, setRules] = React.useState<Rule[]>([
     { id: "rule-1", text: "Prioridad entre propietarios y arrendatarios", enabled: false },
-    { id: "rule-2", text: "Pago de administración al día", enabled: true },
-    { id: "rule-3", text: "Rotación por participación (N)", enabled: false },
+    { id: "rule-2", text: "Pago de administración al día", enabled: false },
+    { id: "rule-3", text: "Rotación por participación", enabled: false },
   ]);
 
   const [startDate, setStartDate] = React.useState<string>("");
 
-  // Periodicidad (checkboxes exclusivos) + log consola
+  // Periodicidad + log
   const [periodicidad, setPeriodicidad] = React.useState<Periodicidad>(null);
   const handlePeriodicidad = (value: Exclude<Periodicidad, null>) => {
     setPeriodicidad((prev) => {
@@ -101,39 +100,59 @@ export default function SorteosPage() {
     description: "",
   });
 
-  // Modal de Configurar
+  // Modal de Configurar (rotación)
   const [configOpen, setConfigOpen] = React.useState(false);
-  const [configN, setConfigN] = React.useState<number | null>(null);
+  const [rotationCount, setRotationCount] = React.useState<number | null>(null); // cuántos seguidos antes de descansar
 
   // Escuchar evento emitido por RuleToggleCard al pulsar "Configurar"
   React.useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ id: string; enabled: boolean; mainText: string }>;
       if (!ce.detail) return;
-      // Abrir modal SIN preseleccionar N (mantener placeholder)
+      // Abrir modal sin preseleccionar
       setConfigOpen(true);
-      setConfigN(null);
+      setRotationCount(null);
     };
     window.addEventListener("open-config-rule", handler as EventListener);
     return () => window.removeEventListener("open-config-rule", handler as EventListener);
-  }, []); // <- sin dependencias: no se reescribe N
+  }, []);
 
   const handleOpenInfo = (rule: Rule) => {
     const info = RULE_INFO[rule.id] ?? { title: rule.text, description: "" };
     setInfoModal({ open: true, title: info.title, description: info.description });
   };
 
-  const saveConfig = () => {
+  const saveRotationConfig = () => {
     if (!periodicidad) {
-      console.warn("Selecciona una periodicidad antes de guardar.");
+      console.warn("Selecciona una periodicidad antes de guardar configuración de rotación.");
       return;
     }
-    if (!configN) {
-      console.warn("Selecciona un valor de N antes de guardar.");
+    if (!rotationCount) {
+      console.warn("Selecciona cuántos sorteos seguidos permite el sistema antes de descansar.");
       return;
     }
-    console.log("Guardando configuración de Rotación, N =", configN, "periodicidad =", periodicidad);
+    console.log("Configuración guardada — Periodicidad:", periodicidad, " | Seguidos permitidos:", rotationCount);
     setConfigOpen(false);
+  };
+
+  // --- Habilitación del botón Confirmar ---
+  const anyRuleEnabled = rules.some((r) => r.enabled);
+  const rule3Enabled = rules.find((r) => r.id === "rule-3")?.enabled ?? false;
+  const rotationIsConfigured = !rule3Enabled || (rule3Enabled && rotationCount !== null);
+  const canConfirm =
+    Boolean(startDate) &&
+    Boolean(periodicidad) &&
+    anyRuleEnabled &&
+    rotationIsConfigured;
+
+  const onConfirm = () => {
+    console.log("Confirmando configuración:", {
+      startDate,
+      periodicidad,
+      reglas: rules,
+      rotacionSeguidosPermitidos: rotationCount,
+    });
+    // Aquí conectarías con tu API/acción real
   };
 
   return (
@@ -182,7 +201,10 @@ export default function SorteosPage() {
         </div>
       </section>
 
-      {/* Tarjetas de reglas: 2 primeras SOLO info; última INFO + CONFIGURAR */}
+      {/* Tarjetas de reglas:
+          - Primeras 2: solo Información
+          - Última: Información + Configurar
+          Además: botones deshabilitados si la regla no está activada (se maneja dentro de la card). */}
       <div className="mt-6 space-y-4">
         {rules.map((rule, idx) => (
           <RuleToggleCard
@@ -192,15 +214,36 @@ export default function SorteosPage() {
             onToggle={(en) =>
               setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, enabled: en } : r)))
             }
-            hideConfigureButton={idx < 2}   // primeras 2 sin "Configurar"
-            hideInfoButton={false}          // todas con "Información"
+            hideConfigureButton={idx < 2}   // primeras 2 sin “Configurar”
+            hideInfoButton={false}          // todas con “Información”
             onOpenInfo={() => handleOpenInfo(rule)}
-            onOpenModal={() => { /* el modal de configurar se abre por evento */ }}
+            onOpenModal={() => { /* abrir por evento */ }}
             infoLabel="Información"
             actionLabel="Configurar"
-            domEventKey="open-config-rule"  // emite el evento que escuchamos
+            domEventKey="open-config-rule"
           />
         ))}
+      </div>
+
+      {/* Footer de página: Confirmar */}
+      <div className="mt-8 flex justify-end">
+        <Button
+          onClick={onConfirm}
+          disabled={!canConfirm}
+          title={
+            !startDate
+              ? "Selecciona una fecha de inicio"
+              : !periodicidad
+              ? "Selecciona una periodicidad"
+              : !anyRuleEnabled
+              ? "Activa al menos una regla"
+              : !rotationIsConfigured
+              ? "Configura la rotación cuando la regla de rotación está activa"
+              : undefined
+          }
+        >
+          Confirmar
+        </Button>
       </div>
 
       {/* Modal de Información */}
@@ -216,22 +259,20 @@ export default function SorteosPage() {
         saveLabel="Guardar"
       />
 
-      {/* Modal de Configurar (select N) */}
+      {/* Modal de Configurar (rotación) */}
       <ConfigureModal
         open={configOpen}
         title="Configurar rotación por participación"
         description={
-          "Define el valor de N para la regla de rotación:\n" +
-          "• Si un residente ha participado en N sorteos consecutivos, quedará excluido del siguiente (N+1).\n" +
-          "• Elige N de acuerdo con la periodicidad para que la rotación tenga sentido.\n\n" +
-          getNDescription(periodicidad)
+          "Indica cuántos sorteos seguidos puede participar una persona antes de descansar el siguiente.\n\n" +
+          getRotationDescription(periodicidad)
         }
-        nValue={configN}
-        nOptions={getNOptions(periodicidad)}
-        onChangeN={setConfigN}
+        nValue={rotationCount}
+        nOptions={getRotationOptions(periodicidad)}
+        onChangeN={setRotationCount}
         onClose={() => setConfigOpen(false)}
-        onSave={saveConfig}
-        disabled={getNOptions(periodicidad).length === 0}
+        onSave={saveRotationConfig}
+        disabled={getRotationOptions(periodicidad).length === 0}
       />
     </section>
   );

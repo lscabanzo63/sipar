@@ -1,3 +1,4 @@
+// src/components/ui/RuleToggleCard.tsx
 "use client";
 
 import * as React from "react";
@@ -7,26 +8,26 @@ import { cn } from "@/lib/utils/cn";
 export type RuleToggleCardProps = {
   id?: string;
   mainText: string;
+
   enabled?: boolean;
   defaultEnabled?: boolean;
   onToggle?: (enabled: boolean) => void;
 
-  // Botón "Configurar"
-  onOpenModal?: () => void;
+  onOpenModal?: () => void;     // botón "Configurar"
   actionLabel?: string;
 
-  // Botón "Información"
-  onOpenInfo?: () => void;
+  onOpenInfo?: () => void;      // botón "Información"
   infoLabel?: string;
 
-  // Control desde la page
   hideInfoButton?: boolean;
   hideConfigureButton?: boolean;
 
-  helperText?: string;
   disabled?: boolean;
+
+  helperText?: string;
   className?: string;
-  domEventKey?: string;
+
+  domEventKey?: string;         // emite CustomEvent al pulsar "Configurar"
 };
 
 export default function RuleToggleCard({
@@ -45,10 +46,10 @@ export default function RuleToggleCard({
   hideInfoButton = false,
   hideConfigureButton = false,
 
-  helperText,
   disabled,
   className,
   domEventKey,
+  helperText,
 }: RuleToggleCardProps) {
   const isControlled = typeof enabled === "boolean";
   const [internal, setInternal] = React.useState(defaultEnabled);
@@ -98,9 +99,9 @@ export default function RuleToggleCard({
       {/* Texto principal */}
       <div className="min-w-0 flex-1">
         <p className="text-sm text-neutral-800">{mainText}</p>
-        {helperText && (
+        {helperText ? (
           <p className="mt-1 text-xs text-neutral-500">{helperText}</p>
-        )}
+        ) : null}
       </div>
 
       {/* Switch + botones */}
@@ -130,14 +131,14 @@ export default function RuleToggleCard({
           />
         </button>
 
-        {/* Botones en horizontal - ambos variant="primary" (morado) */}
+        {/* Botones en horizontal (se deshabilitan si la regla no está activa) */}
         <div className="flex items-center gap-2">
           {!hideInfoButton && (
             <Button
               size="sm"
-              variant="primary"   // <— mismo estilo que “Configurar”
+              variant="primary"
               onClick={handleOpenInfo}
-              disabled={disabled}
+              disabled={disabled || !isOn}
             >
               {infoLabel}
             </Button>
@@ -147,7 +148,7 @@ export default function RuleToggleCard({
               size="sm"
               variant="primary"
               onClick={handleOpenConfigure}
-              disabled={disabled}
+              disabled={disabled || !isOn}
             >
               {actionLabel}
             </Button>
