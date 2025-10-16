@@ -8,17 +8,28 @@ import { DateField } from "@/components/ui/DateField";
 import { InfoModal } from "@/components/ui/InfoModal";
 import { ConfigureModal } from "@/components/ui/ConfigureModal";
 
-type Rule = { id: string; text: string; enabled: boolean };
+// 👇 Cambiado a HeroIcons
+import {
+  CalendarDaysIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
+
+import {
+  upsertSorteoConfiguracionFromSession,
+  type ConfiguracionPayload,
+  type Periodicidad as ApiPeriodicidad,
+} from "@/lib/api/sorteos";
+
+type Rule = { id: "rule-1" | "rule-2" | "rule-3"; text: string; enabled: boolean };
 type Periodicidad = "TRIMESTRAL" | "CUATRIMESTRAL" | "SEMESTRAL" | null;
 
-// Map de tipos para el payload
-const RULE_TYPE: Record<string, "PRIORIDAD_PROPIETARIO" | "PAGO_ADMINISTRACION" | "ROTACION"> = {
+const RULE_TYPE: Record<Rule["id"], "PRIORIDAD_PROPIETARIO" | "PAGO_ADMINISTRACION" | "ROTACION"> = {
   "rule-1": "PRIORIDAD_PROPIETARIO",
   "rule-2": "PAGO_ADMINISTRACION",
   "rule-3": "ROTACION",
 };
 
-const RULE_INFO: Record<string, { title: string; description: string }> = {
+const RULE_INFO: Record<Rule["id"], { title: string; description: string }> = {
   "rule-1": {
     title: "Prioridad entre propietarios y arrendatarios",
     description:
@@ -36,7 +47,6 @@ const RULE_INFO: Record<string, { title: string; description: string }> = {
   },
 };
 
-// Opciones válidas según periodicidad
 function getRotationOptions(periodicidad: Periodicidad): number[] {
   if (periodicidad === "SEMESTRAL") return [1];
   if (periodicidad === "CUATRIMESTRAL") return [1, 2];
@@ -44,7 +54,6 @@ function getRotationOptions(periodicidad: Periodicidad): number[] {
   return [];
 }
 
-// Descripción pedagógica (sin tecnicismos)
 function getRotationDescription(periodicidad: Periodicidad): string {
   if (periodicidad === "SEMESTRAL") {
     return (
@@ -81,6 +90,108 @@ function withMidnight(dateYYYYMMDD: string | null | undefined): string | null {
   return `${dateYYYYMMDD}T00:00:00`;
 }
 
+/** Formatea ISO a fecha legible en es-CO, p.ej. '15 ene 2026' */
+function prettyDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("es-CO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** Construye etiquetas legibles de reglas activas */
+function selectedRulesText(rules: Rule[], rotationCount: number | null): string[] {
+  return rules
+    .filter((r) => r.enabled)
+    .map((r) => {
+      const base = RULE_INFO[r.id]?.title ?? r.text;
+      return RULE_TYPE[r.id] === "ROTACION" && rotationCount
+        ? `${base} (n=${rotationCount})`
+        : base;
+    });
+}
+
+/** Chips helper */
+function RuleChip({ label }: { label: string }) {
+  return (
+    <span
+      className="px-3 py-1 rounded-full text-xs font-medium border
+                 bg-green-100 text-green-700 border-green-200"
+    >
+      {label}
+    </span>
+  );
+}
+
+
+/** Modal vistoso de resumen */
+function ConfigSummaryModal({
+  open,
+  onClose,
+  periodicidad,
+  fechas,
+  reglas,
+}: {
+  open: boolean;
+  onClose: () => void;
+  periodicidad: string;
+  fechas: string[];
+  reglas: string[];
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-[fadeIn_0.15s_ease-out]">
+        <div className="flex items-center gap-3 mb-4">
+          {/* Ícono en morado brand */}
+          <CalendarDaysIcon className="h-7 w-7" style={{ color: "var(--color-brand)" }} />
+          {/* Título en morado brand */}
+          <h2 className="text-2xl font-semibold" style={{ color: "var(--color-brand)" }}>
+            Configuración de sorteo creada
+          </h2>
+        </div>
+
+        <p className="text-sm text-neutral-600 mb-3">
+          Periodicidad seleccionada:{" "}
+          <span className="font-medium text-neutral-900">{periodicidad}</span>
+        </p>
+
+        <div className="mb-4">
+          <h3 className="font-medium text-neutral-800 mb-1 flex items-center gap-1">
+            <CheckCircleIcon className="h-4 w-4 text-green-600" />
+            Fechas programadas:
+          </h3>
+          <ul className="pl-4 list-disc text-sm text-neutral-700 space-y-0.5">
+            {fechas.map((f, i) => (
+              <li key={`${f}-${i}`}>{f}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mb-5">
+          <h3 className="font-medium text-neutral-800 mb-2">Reglas activas:</h3>
+          <div className="flex flex-wrap gap-2">
+            {reglas.length === 0 ? (
+              <span className="text-sm text-neutral-600">Ninguna</span>
+            ) : (
+              reglas.map((r) => <RuleChip key={r} label={r} />)
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <Button variant="primary" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function SorteosPage() {
   const [rules, setRules] = React.useState<Rule[]>([
     { id: "rule-1", text: "Prioridad entre propietarios y arrendatarios", enabled: false },
@@ -88,31 +199,26 @@ export default function SorteosPage() {
     { id: "rule-3", text: "Rotación por participación", enabled: false },
   ]);
 
-  // DateField trabaja con YYYY-MM-DD
   const [startDate, setStartDate] = React.useState<string>("");
-
-  // Periodicidad
   const [periodicidad, setPeriodicidad] = React.useState<Periodicidad>(null);
-  const handlePeriodicidad = (value: Exclude<Periodicidad, null>) => {
-    setPeriodicidad((prev) => (prev === value ? null : value));
-    console.log("Periodicidad seleccionada:", value);
-  };
-
-  // Modales
-  const [infoModal, setInfoModal] = React.useState<{ open: boolean; title: string; description: string }>({
-    open: false,
-    title: "",
-    description: "",
-  });
-
   const [configOpen, setConfigOpen] = React.useState(false);
   const [rotationCount, setRotationCount] = React.useState<number | null>(null);
+  const [infoModal, setInfoModal] = React.useState({ open: false, title: "", description: "" });
 
-  // Abrir modal de configurar desde la card (evento)
+  const [summaryOpen, setSummaryOpen] = React.useState(false);
+  const [summaryData, setSummaryData] = React.useState<{
+    periodicidad: string;
+    fechas: string[];
+    reglas: string[];
+  } | null>(null);
+
+  const [submitting, setSubmitting] = React.useState(false);
+  const [serverMsg, setServerMsg] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     const handler = () => {
       setConfigOpen(true);
-      setRotationCount(null); // sin preseleccionar
+      setRotationCount(null);
     };
     window.addEventListener("open-config-rule", handler as EventListener);
     return () => window.removeEventListener("open-config-rule", handler as EventListener);
@@ -123,52 +229,74 @@ export default function SorteosPage() {
     setInfoModal({ open: true, title: info.title, description: info.description });
   };
 
+  const handlePeriodicidad = (value: Exclude<Periodicidad, null>) => {
+    setPeriodicidad((prev) => (prev === value ? null : value));
+  };
+
   const saveRotationConfig = () => {
-    if (!periodicidad) {
-      console.warn("Selecciona una periodicidad antes de guardar configuración de rotación.");
-      return;
-    }
-    if (!rotationCount) {
-      console.warn("Selecciona cuántos sorteos seguidos permite el sistema antes de descansar.");
-      return;
-    }
-    console.log("Configuración guardada — Periodicidad:", periodicidad, " | Seguidos permitidos:", rotationCount);
+    if (!periodicidad || !rotationCount) return;
     setConfigOpen(false);
   };
 
-  // Habilitación del botón Confirmar (página)
   const anyRuleEnabled = rules.some((r) => r.enabled);
   const rule3Enabled = rules.find((r) => r.id === "rule-3")?.enabled ?? false;
   const rotationIsConfigured = !rule3Enabled || (rule3Enabled && rotationCount !== null);
-  const canConfirm =
-    Boolean(startDate) && Boolean(periodicidad) && anyRuleEnabled && rotationIsConfigured;
+  const canConfirm = Boolean(startDate) && Boolean(periodicidad) && anyRuleEnabled && rotationIsConfigured;
 
-  // Construcción del payload y log
-  const onConfirm = () => {
-    const fechaISO = withMidnight(startDate); // YYYY-MM-DDT00:00:00
-
-    const normas = rules.map((r) => {
+  type Norma = ConfiguracionPayload["normas"][number];
+  function buildNormas(): Norma[] {
+    const result: Norma[] = [];
+    for (const r of rules) {
       const tipo = RULE_TYPE[r.id];
       if (tipo === "ROTACION") {
-        return {
-          tipo,
-          activa: r.enabled,
-          parametros: r.enabled && rotationCount ? { n: rotationCount } : {},
-        };
+        const item: Norma =
+          r.enabled && rotationCount
+            ? { tipo, activa: true, parametros: { n: rotationCount } }
+            : { tipo, activa: r.enabled };
+        result.push(item);
+      } else {
+        result.push({ tipo, activa: r.enabled });
       }
-      return { tipo, activa: r.enabled, parametros: {} };
-    });
+    }
+    return result;
+  }
 
-    const payload = {
-      data: {
-        periodicidad: periodicidad ?? "",
-        fecha_inicio: fechaISO ?? "",
-        normas,
-      },
+  const onConfirm = async () => {
+    if (!canConfirm || !periodicidad) return;
+    const fechaISO = withMidnight(startDate);
+    if (!fechaISO) return;
+
+    const payload: ConfiguracionPayload = {
+      periodicidad: periodicidad as ApiPeriodicidad,
+      fecha_inicio: fechaISO,
+      normas: buildNormas(),
     };
 
-    console.log("Fecha (con hora 24h):", fechaISO);
-    console.log("Payload listo para servicio:", JSON.stringify(payload, null, 2));
+    try {
+      setSubmitting(true);
+      setServerMsg(null);
+
+      const res = await upsertSorteoConfiguracionFromSession(payload);
+      const fechasFmt = (res.fechas_programadas ?? []).map(prettyDate);
+      const reglasFmt = selectedRulesText(rules, rotationCount);
+
+      setSummaryData({
+        periodicidad: res.periodicidad,
+        fechas: fechasFmt,
+        reglas: reglasFmt,
+      });
+      setSummaryOpen(true);
+      setServerMsg("Configuración guardada correctamente.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error desconocido";
+      setInfoModal({
+        open: true,
+        title: "Error",
+        description: msg,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -179,15 +307,14 @@ export default function SorteosPage() {
       {/* Fecha de inicio + Periodicidad */}
       <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2 sm:items-start sm:gap-10">
-          {/* Fecha de inicio: usa minToday para bloquear pasadas */}
           <div className="min-w-[220px]">
             <DateField
               id="fecha-inicio"
               name="fechaInicio"
               label="Fecha de inicio"
-              value={startDate}           // YYYY-MM-DD
+              value={startDate}
               onChange={setStartDate}
-              minToday                    // ⬅️ no permite fechas anteriores a hoy
+              minToday
             />
           </div>
 
@@ -196,24 +323,9 @@ export default function SorteosPage() {
               Periodicidad
             </label>
             <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-x-6 gap-y-2">
-              <Checkbox
-                id="chk-trimestral"
-                checked={periodicidad === "TRIMESTRAL"}
-                onChange={() => handlePeriodicidad("TRIMESTRAL")}
-                label="Trimestral"
-              />
-              <Checkbox
-                id="chk-cuatrimestral"
-                checked={periodicidad === "CUATRIMESTRAL"}
-                onChange={() => handlePeriodicidad("CUATRIMESTRAL")}
-                label="Cuatrimestral"
-              />
-              <Checkbox
-                id="chk-semestral"
-                checked={periodicidad === "SEMESTRAL"}
-                onChange={() => handlePeriodicidad("SEMESTRAL")}
-                label="Semestral"
-              />
+              <Checkbox id="chk-trimestral" checked={periodicidad === "TRIMESTRAL"} onChange={() => handlePeriodicidad("TRIMESTRAL")} label="Trimestral" />
+              <Checkbox id="chk-cuatrimestral" checked={periodicidad === "CUATRIMESTRAL"} onChange={() => handlePeriodicidad("CUATRIMESTRAL")} label="Cuatrimestral" />
+              <Checkbox id="chk-semestral" checked={periodicidad === "SEMESTRAL"} onChange={() => handlePeriodicidad("SEMESTRAL")} label="Semestral" />
             </div>
           </div>
         </div>
@@ -226,13 +338,11 @@ export default function SorteosPage() {
             key={rule.id}
             mainText={rule.text}
             enabled={rule.enabled}
-            onToggle={(en) =>
-              setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, enabled: en } : r)))
-            }
-            hideConfigureButton={idx < 2}   // 2 primeras sin “Configurar”
-            hideInfoButton={false}          // todas con “Información”
+            onToggle={(en) => setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, enabled: en } : r)))}
+            hideConfigureButton={idx < 2}
+            hideInfoButton={false}
             onOpenInfo={() => handleOpenInfo(rule)}
-            onOpenModal={() => { /* se abre por evento */ }}
+            onOpenModal={() => {}}
             infoLabel="Información"
             actionLabel="Configurar"
             domEventKey="open-config-rule"
@@ -240,14 +350,15 @@ export default function SorteosPage() {
         ))}
       </div>
 
-      {/* Footer: Confirmar */}
-      <div className="mt-8 flex justify-end">
-        <Button onClick={onConfirm} disabled={!canConfirm}>
-          Confirmar
+      {/* Footer */}
+      <div className="mt-8 flex flex-col items-end gap-2">
+        {serverMsg && <p className="text-sm whitespace-pre-wrap text-neutral-700">{serverMsg}</p>}
+        <Button onClick={onConfirm} disabled={!canConfirm || submitting}>
+          {submitting ? "Guardando..." : "Confirmar"}
         </Button>
       </div>
 
-      {/* Modal de Información: un solo botón Confirmar */}
+      {/* Modal simple de error */}
       <InfoModal
         open={infoModal.open}
         title={infoModal.title}
@@ -256,7 +367,7 @@ export default function SorteosPage() {
         onClose={() => setInfoModal({ open: false, title: "", description: "" })}
       />
 
-      {/* Modal de Configurar (rotación) */}
+      {/* Modal de configurar rotación */}
       <ConfigureModal
         open={configOpen}
         title="Configurar rotación por participación"
@@ -271,11 +382,18 @@ export default function SorteosPage() {
         onSave={saveRotationConfig}
         disabled={getRotationOptions(periodicidad).length === 0}
       />
+
+      {/* Modal vistoso de resumen */}
+      <ConfigSummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        periodicidad={summaryData?.periodicidad ?? ""}
+        fechas={summaryData?.fechas ?? []}
+        reglas={summaryData?.reglas ?? []}
+      />
     </section>
   );
 }
-
-/* ---------- UI helpers ---------- */
 
 function Checkbox({
   id,
