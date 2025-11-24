@@ -8,11 +8,8 @@ import { DateField } from "@/components/ui/DateField";
 import { InfoModal } from "@/components/ui/InfoModal";
 import { ConfigureModal } from "@/components/ui/ConfigureModal";
 
-// 👇 Cambiado a HeroIcons
-import {
-  CalendarDaysIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
+// HeroIcons
+import { CalendarDaysIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 
 import {
   upsertSorteoConfiguracionFromSession,
@@ -20,10 +17,18 @@ import {
   type Periodicidad as ApiPeriodicidad,
 } from "@/lib/api/sorteos";
 
+import {
+  getSorteoConfiguracionFromSession,
+  type ConfiguracionResponse as GetConfigResponse,
+} from "@/lib/api/getSorteoConfiguracion";
+
 type Rule = { id: "rule-1" | "rule-2" | "rule-3"; text: string; enabled: boolean };
 type Periodicidad = "TRIMESTRAL" | "CUATRIMESTRAL" | "SEMESTRAL" | null;
 
-const RULE_TYPE: Record<Rule["id"], "PRIORIDAD_PROPIETARIO" | "PAGO_ADMINISTRACION" | "ROTACION"> = {
+const RULE_TYPE: Record<
+  Rule["id"],
+  "PRIORIDAD_PROPIETARIO" | "PAGO_ADMINISTRACION" | "ROTACION"
+> = {
   "rule-1": "PRIORIDAD_PROPIETARIO",
   "rule-2": "PAGO_ADMINISTRACION",
   "rule-3": "ROTACION",
@@ -84,13 +89,13 @@ function getRotationDescription(periodicidad: Periodicidad): string {
   return "Selecciona una periodicidad para ver las opciones de cuántos sorteos seguidos se permiten antes de descansar.";
 }
 
-/** Devuelve `YYYY-MM-DDT00:00:00` a partir del valor del DateField (YYYY-MM-DD) */
+/** YYYY-MM-DD -> YYYY-MM-DDT00:00:00 */
 function withMidnight(dateYYYYMMDD: string | null | undefined): string | null {
   if (!dateYYYYMMDD) return null;
   return `${dateYYYYMMDD}T00:00:00`;
 }
 
-/** Formatea ISO a fecha legible en es-CO, p.ej. '15 ene 2026' */
+/** ISO -> '15 ene 2026' (es-CO) */
 function prettyDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -101,7 +106,13 @@ function prettyDate(iso: string): string {
   });
 }
 
-/** Construye etiquetas legibles de reglas activas */
+/** ISO -> 'YYYY-MM-DD' */
+function isoToYYYYMMDD(iso: string): string {
+  // acepta '2026-01-15T00:00:00' o '2026-01-15'
+  return iso.slice(0, 10);
+}
+
+/** Reglas activas en texto amigable */
 function selectedRulesText(rules: Rule[], rotationCount: number | null): string[] {
   return rules
     .filter((r) => r.enabled)
@@ -113,20 +124,14 @@ function selectedRulesText(rules: Rule[], rotationCount: number | null): string[
     });
 }
 
-/** Chips helper */
 function RuleChip({ label }: { label: string }) {
   return (
-    <span
-      className="px-3 py-1 rounded-full text-xs font-medium border
-                 bg-green-100 text-green-700 border-green-200"
-    >
+    <span className="px-3 py-1 rounded-full text-xs font-medium border bg-green-100 text-green-700 border-green-200">
       {label}
     </span>
   );
 }
 
-
-/** Modal vistoso de resumen */
 function ConfigSummaryModal({
   open,
   onClose,
@@ -143,11 +148,9 @@ function ConfigSummaryModal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-[fadeIn_0.15s_ease-out]">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
-          {/* Ícono en morado brand */}
           <CalendarDaysIcon className="h-7 w-7" style={{ color: "var(--color-brand)" }} />
-          {/* Título en morado brand */}
           <h2 className="text-2xl font-semibold" style={{ color: "var(--color-brand)" }}>
             Configuración de sorteo creada
           </h2>
@@ -191,7 +194,6 @@ function ConfigSummaryModal({
   );
 }
 
-
 export default function SorteosPage() {
   const [rules, setRules] = React.useState<Rule[]>([
     { id: "rule-1", text: "Prioridad entre propietarios y arrendatarios", enabled: false },
@@ -215,13 +217,61 @@ export default function SorteosPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [serverMsg, setServerMsg] = React.useState<string | null>(null);
 
+  // Estado para condicionar el render
+  const [hasExistingConfig, setHasExistingConfig] = React.useState<boolean>(false);
+  const [loadingInitial, setLoadingInitial] = React.useState<boolean>(true);
+
+  // Lanza modal de configurar regla #3
   React.useEffect(() => {
     const handler = () => {
       setConfigOpen(true);
-      setRotationCount(null);
+      setRotationCount((prev) => prev); // no tocar valor aquí
     };
     window.addEventListener("open-config-rule", handler as EventListener);
     return () => window.removeEventListener("open-config-rule", handler as EventListener);
+  }, []);
+
+  // 1) Al cargar la página: GET configuración y precargar UI si existe
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const res: GetConfigResponse = await getSorteoConfiguracionFromSession();
+
+        // Si viene algo consistente, marcamos que existe config
+        setHasExistingConfig(true);
+
+        // Fecha: tomamos la menor (inicio del plan)
+        const fechas = Array.isArray(res.fechas_programadas) ? res.fechas_programadas.slice() : [];
+        const fechaInicio = fechas.length ? isoToYYYYMMDD(fechas[0]) : "";
+        setStartDate(fechaInicio);
+
+        // Periodicidad
+        setPeriodicidad(res.periodicidad);
+
+        // Reglas: activar según backend y setear n si es ROTACION
+        const enabledByTipo = new Map(
+          res.reglas_asignadas.map((r) => [r.tipo, r] as const)
+        );
+
+        setRules((prev) =>
+          prev.map((r) => {
+            const tipo = RULE_TYPE[r.id];
+            const found = enabledByTipo.get(tipo);
+            if (!found) return { ...r, enabled: false };
+            if (tipo === "ROTACION") {
+              const n = found.parametros?.n ?? null;
+              setRotationCount(n);
+            }
+            return { ...r, enabled: true };
+          })
+        );
+      } catch (err) {
+        // Si 404/422 u otro → asumimos que NO hay configuración previa
+        setHasExistingConfig(false);
+      } finally {
+        setLoadingInitial(false);
+      }
+    })();
   }, []);
 
   const handleOpenInfo = (rule: Rule) => {
@@ -231,17 +281,23 @@ export default function SorteosPage() {
 
   const handlePeriodicidad = (value: Exclude<Periodicidad, null>) => {
     setPeriodicidad((prev) => (prev === value ? null : value));
+    // si cambia la periodicidad, validar n de rotación
+    setRotationCount((n) => {
+      const options = getRotationOptions(value);
+      return n && options.includes(n) ? n : null;
+    });
   };
 
   const saveRotationConfig = () => {
-    if (!periodicidad || !rotationCount) return;
+    if (!periodicidad) return;
     setConfigOpen(false);
   };
 
   const anyRuleEnabled = rules.some((r) => r.enabled);
   const rule3Enabled = rules.find((r) => r.id === "rule-3")?.enabled ?? false;
   const rotationIsConfigured = !rule3Enabled || (rule3Enabled && rotationCount !== null);
-  const canConfirm = Boolean(startDate) && Boolean(periodicidad) && anyRuleEnabled && rotationIsConfigured;
+  const canConfirm =
+    Boolean(startDate) && Boolean(periodicidad) && anyRuleEnabled && rotationIsConfigured;
 
   type Norma = ConfiguracionPayload["normas"][number];
   function buildNormas(): Norma[] {
@@ -287,6 +343,7 @@ export default function SorteosPage() {
       });
       setSummaryOpen(true);
       setServerMsg("Configuración guardada correctamente.");
+      setHasExistingConfig(true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error desconocido";
       setInfoModal({
@@ -302,7 +359,15 @@ export default function SorteosPage() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-2xl font-bold">Sorteos</h1>
-      <p className="mt-2 text-neutral-600">¡Genera tu sorteo!</p>
+
+      {/* 2) Mensaje condicionado */}
+      {loadingInitial ? (
+        <p className="mt-2 text-neutral-600">Cargando…</p>
+      ) : hasExistingConfig ? (
+        <p className="mt-2 text-neutral-600">Puedes actualizar tu sorteo</p>
+      ) : (
+        <p className="mt-2 text-neutral-600">¡Genera tu sorteo!</p>
+      )}
 
       {/* Fecha de inicio + Periodicidad */}
       <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
@@ -323,9 +388,24 @@ export default function SorteosPage() {
               Periodicidad
             </label>
             <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-x-6 gap-y-2">
-              <Checkbox id="chk-trimestral" checked={periodicidad === "TRIMESTRAL"} onChange={() => handlePeriodicidad("TRIMESTRAL")} label="Trimestral" />
-              <Checkbox id="chk-cuatrimestral" checked={periodicidad === "CUATRIMESTRAL"} onChange={() => handlePeriodicidad("CUATRIMESTRAL")} label="Cuatrimestral" />
-              <Checkbox id="chk-semestral" checked={periodicidad === "SEMESTRAL"} onChange={() => handlePeriodicidad("SEMESTRAL")} label="Semestral" />
+              <Checkbox
+                id="chk-trimestral"
+                checked={periodicidad === "TRIMESTRAL"}
+                onChange={() => handlePeriodicidad("TRIMESTRAL")}
+                label="Trimestral"
+              />
+              <Checkbox
+                id="chk-cuatrimestral"
+                checked={periodicidad === "CUATRIMESTRAL"}
+                onChange={() => handlePeriodicidad("CUATRIMESTRAL")}
+                label="Cuatrimestral"
+              />
+              <Checkbox
+                id="chk-semestral"
+                checked={periodicidad === "SEMESTRAL"}
+                onChange={() => handlePeriodicidad("SEMESTRAL")}
+                label="Semestral"
+              />
             </div>
           </div>
         </div>
@@ -338,11 +418,15 @@ export default function SorteosPage() {
             key={rule.id}
             mainText={rule.text}
             enabled={rule.enabled}
-            onToggle={(en) => setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, enabled: en } : r)))}
+            onToggle={(en) =>
+              setRules((prev) =>
+                prev.map((r) => (r.id === rule.id ? { ...r, enabled: en } : r))
+              )
+            }
             hideConfigureButton={idx < 2}
             hideInfoButton={false}
             onOpenInfo={() => handleOpenInfo(rule)}
-            onOpenModal={() => {}}
+            onOpenModal={() => setConfigOpen(true)}
             infoLabel="Información"
             actionLabel="Configurar"
             domEventKey="open-config-rule"
@@ -352,9 +436,11 @@ export default function SorteosPage() {
 
       {/* Footer */}
       <div className="mt-8 flex flex-col items-end gap-2">
-        {serverMsg && <p className="text-sm whitespace-pre-wrap text-neutral-700">{serverMsg}</p>}
+        {serverMsg && (
+          <p className="text-sm whitespace-pre-wrap text-neutral-700">{serverMsg}</p>
+        )}
         <Button onClick={onConfirm} disabled={!canConfirm || submitting}>
-          {submitting ? "Guardando..." : "Confirmar"}
+          {submitting ? "Guardando..." : hasExistingConfig ? "Actualizar" : "Confirmar"}
         </Button>
       </div>
 
