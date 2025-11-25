@@ -7,6 +7,7 @@ export type AdminUser = {
   id: string;
   name: string;
   email: string;
+  conjunto: string;
   active: boolean;
 };
 
@@ -26,8 +27,8 @@ export default function AdminListCard({
   onToggleActive,
 }: Props) {
   return (
-    <section className="space-y-3">
-      {/* Título y botón de listar */}
+    <section className="space-y-3 w-full">
+      {/* Header superior */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-neutral-900">
@@ -55,33 +56,27 @@ export default function AdminListCard({
         </div>
       </div>
 
-      {/* Card de tabla */}
-      <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-        {/* Header morado */}
-        <div className="bg-brand text-white">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <th className="px-6 py-3 text-left font-semibold">ID</th>
-                <th className="px-6 py-3 text-left font-semibold">Nombre</th>
-                <th className="px-6 py-3 text-left font-semibold">Correo</th>
-                <th className="px-6 py-3 text-left font-semibold">Estado</th>
-                <th className="px-6 py-3 text-right font-semibold">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-          </table>
-        </div>
-
-        {/* Cuerpo con scroll */}
+      {/* Tabla */}
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden w-full">
         <div className="max-h-80 overflow-y-auto">
           <table className="w-full text-sm">
+            {/* Header sticky */}
+            <thead className="sticky top-0 bg-brand text-white z-10">
+              <tr>
+                <th className="px-4 py-3 font-semibold text-center">ID</th>
+                <th className="px-4 py-3 font-semibold text-center">Nombre</th>
+                <th className="px-4 py-3 font-semibold text-center">Correo</th>
+                <th className="px-4 py-3 font-semibold text-center">Conjunto</th>
+                <th className="px-4 py-3 font-semibold text-center">Estado</th>
+                <th className="px-4 py-3 font-semibold text-center">Acciones</th>
+              </tr>
+            </thead>
+
             <tbody>
               {admins.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-6 py-6 text-center text-neutral-500"
                   >
                     No hay administradores registrados aún.
@@ -94,21 +89,27 @@ export default function AdminListCard({
                   key={admin.id}
                   className="border-t border-neutral-200 hover:bg-neutral-50"
                 >
-                  <td className="px-6 py-3 text-neutral-900">
-                    {admin.id}
-                  </td>
-                  <td className="px-6 py-3 text-neutral-900">
-                    {admin.name}
-                  </td>
-                  <td className="px-6 py-3 text-neutral-700">
+                  <td className="px-4 py-3 text-center">{admin.id}</td>
+
+                  <td className="px-4 py-3 text-center">{admin.name}</td>
+
+                  <td className="px-4 py-3 text-center truncate">
                     {admin.email}
                   </td>
-                  <td className="px-6 py-3">
-                    <StatusBadge active={admin.active} />
+
+                  <td className="px-4 py-3 text-center truncate">
+                    {admin.conjunto}
                   </td>
-                  <td className="px-6 py-3">
-                    <div className="flex justify-end gap-4">
-                      {/* EDITAR */}
+
+                  {/* Estado — mismo tamaño que botones */}
+                  <td className="px-4 py-3 text-center">
+                    <div className="inline-flex justify-center min-w-[120px]">
+                      <StatusBadge active={admin.active} />
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <div className="flex justify-center gap-4">
                       <Button
                         type="button"
                         variant="primary"
@@ -119,7 +120,6 @@ export default function AdminListCard({
                         Editar
                       </Button>
 
-                      {/* BLOQUEAR / DESBLOQUEAR */}
                       <Button
                         type="button"
                         variant="primary"
@@ -134,6 +134,7 @@ export default function AdminListCard({
                 </tr>
               ))}
             </tbody>
+
           </table>
         </div>
       </div>
