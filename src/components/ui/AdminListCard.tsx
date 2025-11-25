@@ -27,19 +27,19 @@ export default function AdminListCard({
 }: Props) {
   return (
     <section className="space-y-3">
-      {/* Título arriba, fuera del card */}
+      {/* Título y botón de listar */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-neutral-900">
+          <h2 className="text-lg font-semibold text-neutral-900">
             Administradores registrados
           </h2>
-          <p className="text-[11px] text-neutral-500">
+          <p className="text-sm text-neutral-500">
             Gestiona los usuarios con rol administrador del conjunto.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-600">
+          <span className="text-sm text-neutral-600">
             Total: <span className="font-semibold">{admins.length}</span>
           </span>
 
@@ -48,7 +48,6 @@ export default function AdminListCard({
             variant="outline"
             size="sm"
             onClick={onRefresh}
-            className="text-[11px] px-3 py-1.5"
             disabled={loadingList}
           >
             {loadingList ? "Actualizando..." : "Listar usuarios"}
@@ -56,23 +55,17 @@ export default function AdminListCard({
         </div>
       </div>
 
-      {/* Card de tabla estilo morado */}
+      {/* Card de tabla */}
       <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-        {/* Header morado de la tabla */}
+        {/* Header morado */}
         <div className="bg-brand text-white">
-          <table className="w-full text-xs">
+          <table className="w-full text-sm">
             <thead>
               <tr>
                 <th className="px-6 py-3 text-left font-semibold">ID</th>
-                <th className="px-6 py-3 text-left font-semibold">
-                  Nombre
-                </th>
-                <th className="px-6 py-3 text-left font-semibold">
-                  Correo
-                </th>
-                <th className="px-6 py-3 text-left font-semibold">
-                  Estado
-                </th>
+                <th className="px-6 py-3 text-left font-semibold">Nombre</th>
+                <th className="px-6 py-3 text-left font-semibold">Correo</th>
+                <th className="px-6 py-3 text-left font-semibold">Estado</th>
                 <th className="px-6 py-3 text-right font-semibold">
                   Acciones
                 </th>
@@ -81,9 +74,9 @@ export default function AdminListCard({
           </table>
         </div>
 
-        {/* Cuerpo con scroll si hay muchos datos */}
+        {/* Cuerpo con scroll */}
         <div className="max-h-80 overflow-y-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-sm">
             <tbody>
               {admins.length === 0 && (
                 <tr>
@@ -114,22 +107,25 @@ export default function AdminListCard({
                     <StatusBadge active={admin.active} />
                   </td>
                   <td className="px-6 py-3">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-4">
+                      {/* EDITAR */}
                       <Button
                         type="button"
                         variant="primary"
                         size="sm"
+                        className="min-w-[120px]"
                         onClick={() => onEdit(admin)}
-                        className="text-[11px] px-3 py-1.5"
                       >
                         Editar
                       </Button>
+
+                      {/* BLOQUEAR / DESBLOQUEAR */}
                       <Button
                         type="button"
                         variant="primary"
                         size="sm"
+                        className="min-w-[120px]"
                         onClick={() => onToggleActive(admin)}
-                        className="text-[11px] px-3 py-1.5"
                       >
                         {admin.active ? "Bloquear" : "Desbloquear"}
                       </Button>

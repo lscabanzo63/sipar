@@ -24,11 +24,14 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const base =
     "inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] font-medium transition-colors focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed";
+
+  // 👇 aquí el cambio: hover un morado más oscuro, nada de blanco
   const variants = {
-    primary: "bg-brand text-white hover:bg-brand-600",
+    primary: "bg-brand text-white hover:bg-brand-700",
     outline:
       "border border-brand text-brand hover:bg-brand hover:text-white",
   } as const;
+
   const sizes = {
     sm: "px-3 py-2 text-sm",
     md: "px-5 py-3",
