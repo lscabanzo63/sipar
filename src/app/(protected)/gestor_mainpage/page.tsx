@@ -20,7 +20,6 @@ export default function GestorMainPage() {
 
   const fetchAdmins = async () => {
     setLoadingList(true);
-    // simulamos delay
     await new Promise((r) => setTimeout(r, 400));
     setAdmins(MOCK_ADMINS);
     setLoading(false);
@@ -75,8 +74,11 @@ export default function GestorMainPage() {
 
       {!loading && (
         <main className="w-full flex justify-center px-6 py-10">
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+          <div className="w-full max-w-6xl flex flex-col gap-8">
+            {/* ARRIBA: form de creación */}
             <CreateAdmin onSubmit={handleCreate} />
+
+            {/* ABAJO: tabla de admins */}
             <AdminListCard
               admins={admins}
               loadingList={loadingList}

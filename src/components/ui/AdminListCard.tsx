@@ -26,8 +26,9 @@ export default function AdminListCard({
   onToggleActive,
 }: Props) {
   return (
-    <section className="bg-white rounded-2xl shadow-md px-6 py-5">
-      <header className="flex items-center justify-between mb-4 gap-3">
+    <section className="space-y-3">
+      {/* Título arriba, fuera del card */}
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-neutral-900">
             Administradores registrados
@@ -44,32 +45,51 @@ export default function AdminListCard({
 
           <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onRefresh}
-            className="px-3 py-1.5 text-[11px] border border-purple-200 text-purple-800 hover:bg-purple-50 disabled:opacity-60"
+            className="text-[11px] px-3 py-1.5"
+            disabled={loadingList}
           >
             {loadingList ? "Actualizando..." : "Listar usuarios"}
           </Button>
         </div>
-      </header>
+      </div>
 
-      <div className="border border-neutral-200 rounded-xl overflow-hidden">
-        {/* Scroll interno */}
-        <div className="max-h-80 overflow-y-auto">
+      {/* Card de tabla estilo morado */}
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+        {/* Header morado de la tabla */}
+        <div className="bg-brand text-white">
           <table className="w-full text-xs">
-            <thead className="bg-neutral-50 text-neutral-600 sticky top-0">
+            <thead>
               <tr>
-                <th className="px-4 py-2 text-left font-medium">Nombre</th>
-                <th className="px-4 py-2 text-left font-medium">Correo</th>
-                <th className="px-4 py-2 text-left font-medium">Estado</th>
-                <th className="px-4 py-2 text-right font-medium">Acciones</th>
+                <th className="px-6 py-3 text-left font-semibold">ID</th>
+                <th className="px-6 py-3 text-left font-semibold">
+                  Nombre
+                </th>
+                <th className="px-6 py-3 text-left font-semibold">
+                  Correo
+                </th>
+                <th className="px-6 py-3 text-left font-semibold">
+                  Estado
+                </th>
+                <th className="px-6 py-3 text-right font-semibold">
+                  Acciones
+                </th>
               </tr>
             </thead>
+          </table>
+        </div>
+
+        {/* Cuerpo con scroll si hay muchos datos */}
+        <div className="max-h-80 overflow-y-auto">
+          <table className="w-full text-xs">
             <tbody>
               {admins.length === 0 && (
                 <tr>
                   <td
-                    colSpan={4}
-                    className="px-4 py-6 text-center text-neutral-500"
+                    colSpan={5}
+                    className="px-6 py-6 text-center text-neutral-500"
                   >
                     No hay administradores registrados aún.
                   </td>
@@ -79,35 +99,37 @@ export default function AdminListCard({
               {admins.map((admin) => (
                 <tr
                   key={admin.id}
-                  className="border-t border-neutral-100 hover:bg-neutral-50"
+                  className="border-t border-neutral-200 hover:bg-neutral-50"
                 >
-                  <td className="px-4 py-2 text-neutral-900">
+                  <td className="px-6 py-3 text-neutral-900">
+                    {admin.id}
+                  </td>
+                  <td className="px-6 py-3 text-neutral-900">
                     {admin.name}
                   </td>
-                  <td className="px-4 py-2 text-neutral-700">
+                  <td className="px-6 py-3 text-neutral-700">
                     {admin.email}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-6 py-3">
                     <StatusBadge active={admin.active} />
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-6 py-3">
                     <div className="flex justify-end gap-2">
                       <Button
                         type="button"
+                        variant="primary"
+                        size="sm"
                         onClick={() => onEdit(admin)}
-                        className="px-3 py-1.5 text-[11px] border border-neutral-300 text-neutral-700 hover:bg-neutral-100"
+                        className="text-[11px] px-3 py-1.5"
                       >
                         Editar
                       </Button>
-
                       <Button
                         type="button"
+                        variant="primary"
+                        size="sm"
                         onClick={() => onToggleActive(admin)}
-                        className={`px-3 py-1.5 text-[11px] font-medium ${
-                          admin.active
-                            ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
-                            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                        }`}
+                        className="text-[11px] px-3 py-1.5"
                       >
                         {admin.active ? "Bloquear" : "Desbloquear"}
                       </Button>
