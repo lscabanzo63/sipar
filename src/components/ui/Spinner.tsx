@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import clsx from "clsx";
 
@@ -8,23 +8,15 @@ type SpinnerVariant = "inline" | "overlay";
 type Opacity = 40 | 50 | 60 | 70 | 80 | 90;
 
 type SpinnerProps = {
-  /** inline | overlay (pantalla completa) */
   variant?: SpinnerVariant;
-  /** Mostrar/ocultar (solo aplica en overlay) */
   open?: boolean;
-  /** sm | md | lg */
   size?: "sm" | "md" | "lg";
-  /** Color del aro */
   color?: string;
-  /** Texto opcional debajo del spinner */
   text?: string;
-  /** Opacidad del backdrop (overlay) */
   backdropOpacity?: Opacity;
-  /** Desenfoque del fondo (overlay) */
   blur?: boolean;
-  /** Clases extra */
-  className?: string;          // contenedor inline o card overlay
-  backdropClassName?: string;  // overlay
+  className?: string;
+  backdropClassName?: string;
 };
 
 const sizeMap = {
@@ -54,17 +46,23 @@ export const Spinner: React.FC<SpinnerProps> = ({
   className,
   backdropClassName,
 }) => {
+  const [mounted, setMounted] = useState(false);
+
+  // Saber cuándo ya estamos en el navegador
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Bloquear scroll cuando el overlay está abierto
   useEffect(() => {
-    if (variant !== "overlay" || !open) return;
+    if (!mounted || variant !== "overlay" || !open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [variant, open]);
+  }, [mounted, variant, open]);
 
-  // UI del aro
   const Ring = (
     <div
       className={clsx(
@@ -76,7 +74,7 @@ export const Spinner: React.FC<SpinnerProps> = ({
     />
   );
 
-  // Variante inline
+  // Variante inline (no necesita document)
   if (variant === "inline") {
     return (
       <div className={clsx("inline-flex flex-col items-center gap-3", className)}>
@@ -86,9 +84,10 @@ export const Spinner: React.FC<SpinnerProps> = ({
     );
   }
 
-  // Variante overlay
-  if (!open) return null;
+  // Si no está abierto o aún no está montado en el navegador, no pintamos nada
+  if (!open || !mounted || typeof document === "undefined") return null;
 
+  // Variante overlay
   return createPortal(
     <div
       className={clsx(
@@ -110,7 +109,9 @@ export const Spinner: React.FC<SpinnerProps> = ({
       >
         <span className="sr-only">Cargando…</span>
         {Ring}
-        {text ? <p className="text-sm text-neutral-800 text-center">{text}</p> : null}
+        {text ? (
+          <p className="text-sm text-neutral-800 text-center">{text}</p>
+        ) : null}
       </div>
     </div>,
     document.body
