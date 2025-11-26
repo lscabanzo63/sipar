@@ -81,6 +81,11 @@ export async function upsertSorteoConfiguracion(params: {
 }): Promise<ConfiguracionResponse> {
   const { id_conjunto, payload } = params;
 
+  const token = sessionStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No se encontró token de autenticación en sessionStorage");
+  }
+
   const res = await fetch(
     `${BASE_URL}/api/v1/conjuntos/${id_conjunto}/sorteos/configuracion`,
     {
@@ -88,6 +93,7 @@ export async function upsertSorteoConfiguracion(params: {
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       credentials: WITH_CREDENTIALS ? "include" : "same-origin",
       cache: "no-store",

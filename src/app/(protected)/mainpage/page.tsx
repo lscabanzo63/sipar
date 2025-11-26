@@ -8,10 +8,10 @@ export default function MainPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simula tiempo de carga del DOM
+    
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 800); // puedes ajustar el tiempo
+    }, 800); 
     return () => clearTimeout(timer);
   }, []);
 

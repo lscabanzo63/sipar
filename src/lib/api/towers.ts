@@ -32,9 +32,18 @@ async function readError(res: Response): Promise<string> {
 export async function setupTowers(
   payload: SetupTowersPayload
 ): Promise<SetupTowersResponse> {
+  const token = sessionStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No se encontró token de autenticación en sessionStorage");
+  }
+
   const res = await fetch(`${BASE_URL}/setup/torres`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     credentials: WITH_CREDENTIALS ? "include" : "same-origin",
     body: JSON.stringify(payload),
     cache: "no-store",

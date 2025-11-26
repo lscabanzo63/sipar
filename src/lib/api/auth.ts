@@ -1,18 +1,38 @@
 // Tipos de entrada/salida EXACTOS a tu API
 export type LoginInput = {
   email: string;
-  contrasena: string; // 👈 clave correcta
+  contrasena: string;
 };
 
+// Lo que devuelve REALMENTE el backend según Swagger
+export type LoginApiResponse = {
+  access_token: string;
+  token_type: string;
+  user: {
+    id_usuario: number;
+    email: string;
+    nombre_completo: string;
+    rol: string;
+    first_time: boolean;
+    conjunto_id: number;
+    // otros campos que tenga tu backend los puedes agregar acá
+  };
+};
+
+// Si quieres mantener el tipo "plano" que ya usabas:
 export type LoginResponse = {
   id_usuario: number;
   email: string;
   nombre_completo: string;
+  rol: string;
   first_time: boolean;
   conjunto_residencial_id: number;
+  access_token: string;
+  token_type: string;
 };
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 const WITH_CREDENTIALS = true;
 
 async function readError(res: Response): Promise<string> {
@@ -27,21 +47,38 @@ async function readError(res: Response): Promise<string> {
 }
 
 export async function login(input: LoginInput): Promise<LoginResponse> {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
+  const token = sessionStorage.getItem("access_token");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${BASE_URL}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     credentials: WITH_CREDENTIALS ? "include" : "same-origin",
     body: JSON.stringify({
       email: input.email,
-      contrasena: input.contrasena, // 👈 enviar con el nombre correcto
+      contrasena: input.contrasena,
     }),
     cache: "no-store",
   });
 
   const raw = await res.clone().text();
-   
   console.log("login raw response:", res.status, raw);
 
   if (!res.ok) throw new Error(`${res.status} ${await readError(res)}`);
-  return (await res.json()) as LoginResponse;
+
+  const data = (await res.json()) as LoginApiResponse;
+
+  return {
+    id_usuario: data.user.id_usuario,
+    email: data.user.email,
+    nombre_completo: data.user.nombre_completo,
+    rol: data.user.rol,
+    first_time: data.user.first_time,
+    conjunto_residencial_id: data.user.conjunto_id,
+    access_token: data.access_token,
+    token_type: data.token_type,
+  };
 }

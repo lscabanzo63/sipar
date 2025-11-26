@@ -34,6 +34,9 @@ export default function LoginPage() {
     try {
       const resp = await login({ email, contrasena: pwd });
       
+      sessionStorage.setItem("access_token", resp.access_token);
+      sessionStorage.setItem("token_type", resp.token_type);
+
       sessionStorage.setItem(
         "conjunto_residencial_id",
         String(resp.conjunto_residencial_id)
@@ -42,8 +45,11 @@ export default function LoginPage() {
       sessionStorage.setItem("id_usuario", String(resp.id_usuario));
       if (resp.first_time) {
         router.push("/initial-configuration");
-      } else {
+      } else if (resp.rol === "administrador") {
         router.push("/mainpage");
+      }
+      else {
+        router.push("/gestor_mainpage");
       }
     } catch {
       setError("Credenciales Incorrectas");

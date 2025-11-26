@@ -47,6 +47,11 @@ export async function getInitialConfig(params: {
   id_conjunto: number;
   id_usuario: number;
 }): Promise<InitialConfigResponse> {
+  const token = sessionStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No se encontró token de autenticación en sessionStorage");
+  }
+
   const qs = new URLSearchParams({
     id_conjunto: String(params.id_conjunto),
     id_usuario: String(params.id_usuario),
@@ -54,7 +59,10 @@ export async function getInitialConfig(params: {
 
   const res = await fetch(`${BASE_URL}/setup/initial?${qs.toString()}`, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     credentials: WITH_CREDENTIALS ? "include" : "same-origin",
     cache: "no-store",
   });
@@ -79,13 +87,20 @@ export function getInitialConfigFromSession() {
   });
 }
 
-/* ========== PATCH /setup/initial ========== */
 export async function patchInitialConfig(
   payload: PatchInitialConfigPayload
 ): Promise<PatchInitialConfigResponse> {
+  const token = sessionStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No se encontró token de autenticación en sessionStorage");
+  }
+
   const res = await fetch(`${BASE_URL}/setup/initial`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     credentials: WITH_CREDENTIALS ? "include" : "same-origin",
     body: JSON.stringify(payload),
     cache: "no-store",

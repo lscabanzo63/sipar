@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { InfoModal } from "@/components/ui/InfoModal";
 import { ConfigureModal } from "@/components/ui/ConfigureModal";
+import { useRouter } from "next/navigation";
 
 // HeroIcons
 import { CalendarDaysIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
@@ -201,6 +202,8 @@ export default function SorteosPage() {
     { id: "rule-3", text: "Rotación por participación", enabled: false },
   ]);
 
+   const router = useRouter();
+
   const [startDate, setStartDate] = React.useState<string>("");
   const [periodicidad, setPeriodicidad] = React.useState<Periodicidad>(null);
   const [configOpen, setConfigOpen] = React.useState(false);
@@ -221,6 +224,9 @@ export default function SorteosPage() {
   const [hasExistingConfig, setHasExistingConfig] = React.useState<boolean>(false);
   const [loadingInitial, setLoadingInitial] = React.useState<boolean>(true);
 
+
+  const [authChecked, setAuthChecked] = React.useState(false);
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   // Lanza modal de configurar regla #3
   React.useEffect(() => {
     const handler = () => {
@@ -231,24 +237,53 @@ export default function SorteosPage() {
     return () => window.removeEventListener("open-config-rule", handler as EventListener);
   }, []);
 
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const token = sessionStorage.getItem("access_token");
+    const userId = sessionStorage.getItem("id_usuario");
+
+    if (!token || !userId) {
+      // No hay sesión → mostrar mensaje y redirigir
+      setInfoModal({
+        open: true,
+        title: "Sesión requerida",
+        description: "Usted no está autorizado para acceder a esta sección. Inicie sesión nuevamente.",
+      });
+
+      // Pequeño timeout para que se vea el modal 1 seg, si quieres
+      setTimeout(() => {
+        router.replace("/login");
+      }, 1000);
+
+      setIsAuthenticated(false);
+    } else {
+      setIsAuthenticated(true);
+    }
+
+    setAuthChecked(true);
+  }, [router]);
+
+
   // 1) Al cargar la página: GET configuración y precargar UI si existe
   React.useEffect(() => {
+    if (!authChecked || !isAuthenticated) return; // 👈 solo si ya verifiqué auth
+
     (async () => {
       try {
         const res: GetConfigResponse = await getSorteoConfiguracionFromSession();
 
-        // Si viene algo consistente, marcamos que existe config
         setHasExistingConfig(true);
 
-        // Fecha: tomamos la menor (inicio del plan)
-        const fechas = Array.isArray(res.fechas_programadas) ? res.fechas_programadas.slice() : [];
+        const fechas = Array.isArray(res.fechas_programadas)
+          ? res.fechas_programadas.slice()
+          : [];
         const fechaInicio = fechas.length ? isoToYYYYMMDD(fechas[0]) : "";
         setStartDate(fechaInicio);
 
-        // Periodicidad
         setPeriodicidad(res.periodicidad);
 
-        // Reglas: activar según backend y setear n si es ROTACION
         const enabledByTipo = new Map(
           res.reglas_asignadas.map((r) => [r.tipo, r] as const)
         );
@@ -266,13 +301,24 @@ export default function SorteosPage() {
           })
         );
       } catch (err) {
-        // Si 404/422 u otro → asumimos que NO hay configuración previa
         setHasExistingConfig(false);
+
+        // Bonus: detectar 401 del backend
+        if (err instanceof Error && err.message.startsWith("401")) {
+          setInfoModal({
+            open: true,
+            title: "No autorizado",
+            description: "Usted no está autorizado para acceder a esta sección.",
+          });
+          router.replace("/login");
+        }
       } finally {
         setLoadingInitial(false);
       }
     })();
-  }, []);
+  }, [authChecked, isAuthenticated, router]);
+
+
 
   const handleOpenInfo = (rule: Rule) => {
     const info = RULE_INFO[rule.id] ?? { title: rule.text, description: "" };
@@ -356,7 +402,22 @@ export default function SorteosPage() {
     }
   };
 
+  if (!authChecked) {
+    // Aún revisando si hay sesión
+    return (
+      <section className="mx-auto max-w-6xl px-4 py-10">
+        <p className="text-neutral-600">Verificando sesión…</p>
+      </section>
+    );
+  }
+
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
+
     <section className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-2xl font-bold">Sorteos</h1>
 

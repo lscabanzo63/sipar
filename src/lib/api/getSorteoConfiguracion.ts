@@ -59,14 +59,15 @@ async function readError(res: Response): Promise<string> {
   }
 }
 
-/**
- * GET /api/v1/conjuntos/{id_conjunto}/sorteos/
- * Obtiene la configuración del sorteo para un conjunto.
- */
 export async function getSorteoConfiguracion(params: {
   id_conjunto: number;
 }): Promise<ConfiguracionResponse> {
   const { id_conjunto } = params;
+
+  const token = sessionStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No se encontró token de autenticación en sessionStorage");
+  }
 
   const res = await fetch(
     `${BASE_URL}/api/v1/conjuntos/${id_conjunto}/sorteos/`,
@@ -74,6 +75,7 @@ export async function getSorteoConfiguracion(params: {
       method: "GET",
       headers: {
         Accept: "application/json",
+        Authorization: `Bearer ${token}`, // ← Aquí va el token
       },
       credentials: WITH_CREDENTIALS ? "include" : "same-origin",
       cache: "no-store",
@@ -89,11 +91,6 @@ export async function getSorteoConfiguracion(params: {
   return data;
 }
 
-/**
- * Conveniencia: usa el id_conjunto guardado en sessionStorage
- * y ejecuta el GET para traer la configuración.
- * (Solo disponible en componentes "use client")
- */
 export async function getSorteoConfiguracionFromSession(): Promise<ConfiguracionResponse> {
   if (typeof window === "undefined") {
     throw new Error("Solo disponible en cliente");
