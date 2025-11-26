@@ -36,7 +36,8 @@ export default function LoginPage() {
       
       sessionStorage.setItem("access_token", resp.access_token);
       sessionStorage.setItem("token_type", resp.token_type);
-
+      sessionStorage.setItem("rol", resp.rol);
+      sessionStorage.setItem("name", resp.nombre_completo);
       sessionStorage.setItem(
         "conjunto_residencial_id",
         String(resp.conjunto_residencial_id)

@@ -1,10 +1,8 @@
 // src/lib/utils/nav.ts
 
 export type UserRole =
-  | "admin"
-  | "operador"
-  | "seguridad"
-  | "propietario";
+  | "administrador"
+  | "gestor";
 
 export type NavItem = {
   label: string;   
@@ -18,27 +16,22 @@ const MODULES = {
   reporteSorteos: { label: "REPORTE DE SORTEOS", path: "/mainpage/reporte-sorteos" },
   propietarios:   { label: "ADMINISTRACION DE RESIDENTES", path: "/mainpage/administracion-residentes" },
   seguridadAdm:   { label: "ADMINISTRACION SEGURIDAD", path: "/mainpage/administracion-seguridad" },
+  gestorUsers:   { label: "GESTION DE USUARIOS", path: "/gestor_mainpage"}
 } as const;
 
 
-// Config por rol: qué módulos aparecen y en qué orden
+
 const NAV_CONFIG: Record<UserRole, NavItem[]> = {
-  admin: [
+  administrador: [
     MODULES.sorteos,
     MODULES.reporteSorteos,
     MODULES.propietarios,
     MODULES.seguridadAdm,
   ],
-  operador: [
-    MODULES.sorteos,
-    MODULES.reporteSorteos,
+  gestor: [
+    MODULES.gestorUsers,
   ],
-  seguridad: [
-    MODULES.seguridadAdm,
-  ],
-  propietario: [
-    MODULES.propietarios,
-  ],
+  
 };
 
 export function getNavItemsFor(role: UserRole): NavItem[] {

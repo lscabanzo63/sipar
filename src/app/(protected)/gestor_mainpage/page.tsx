@@ -5,38 +5,42 @@ import Spinner from "@/components/ui/Spinner";
 import CreateAdmin from "@/components/ui/CreateAdmin";
 import AdminListCard, { AdminUser } from "@/components/ui/AdminListCard";
 
-// ===============================
-// MOCK TEMPORAL para pruebas visuales
-// ===============================
-const MOCK_ADMINS: AdminUser[] = Array.from({ length: 25 }, (_, i) => ({
-  id: `${i + 1}`,
-  name: `Administrador ${i + 1}`,
-  email: `admin${i + 1}@conjunto.com`,
-  conjunto:
-    i % 3 === 0
-      ? "Conjunto Residencial Indigo"
-      : i % 3 === 1
-      ? "Conjunto Los Almendros"
-      : "Conjunto Torres del Parque",
-  active: i % 4 !== 0, // algunos bloqueados
-}));
-
-// ===============================
-// PAGE COMPONENT
-// ===============================
+// ⬇ Servicios de API
+import {
+  listAdmins,
+  changeAdminEstado,
+  type AdminEstadoAccion,
+} from "@/lib/api/gestorService";
 
 export default function GestorMainPage() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // overlay inicial
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-  const [loadingList, setLoadingList] = useState(false);
+  const [loadingList, setLoadingList] = useState(false); // spinner del botón "Listar usuarios"
 
-  // Simula carga inicial
   const fetchAdmins = async () => {
     setLoadingList(true);
-    await new Promise((res) => setTimeout(res, 500)); // pequeño delay
-    setAdmins(MOCK_ADMINS);
-    setLoading(false);
-    setLoadingList(false);
+
+    try {
+      const apiAdmins = await listAdmins();
+
+      // Ordenar por id ascendente
+      apiAdmins.sort((a, b) => a.id_usuario - b.id_usuario);
+
+      const mapped: AdminUser[] = apiAdmins.map((a) => ({
+        id: String(a.id_usuario),
+        name: `${a.nombres} ${a.apellidos}`,
+        email: a.email,
+        conjunto: a.conjunto,
+        active: a.estado,
+      }));
+
+      setAdmins(mapped);
+    } catch (error) {
+      console.error("Error listando admins:", error);
+    } finally {
+      setLoading(false);
+      setLoadingList(false);
+    }
   };
 
   useEffect(() => {
@@ -44,7 +48,7 @@ export default function GestorMainPage() {
   }, []);
 
   // ===========================
-  // HANDLERS DEL CRUD FAKE
+  // HANDLERS DEL CRUD
   // ===========================
 
   const handleCreate = async (values: {
@@ -59,27 +63,37 @@ export default function GestorMainPage() {
       id: `${admins.length + 1}`,
       name: values.name,
       email: values.email,
-      conjunto: "Conjunto Residencial Indigo", // valor fijo por mock
+      conjunto: "Conjunto Residencial Indigo",
       active: true,
     };
 
-    // prepend
     setAdmins((prev) => [newAdmin, ...prev]);
   };
 
   const handleEdit = (admin: AdminUser) => {
     console.log("Editar usuario:", admin);
-    // Más adelante generamos modal de edición
+    // Aquí luego conectamos updateAdmin + modal
   };
 
   const handleToggleActive = async (admin: AdminUser) => {
-    console.log("Toggle activo:", admin);
+    try {
+      console.log("Cambiar estado admin:", admin);
 
-    setAdmins((prev) =>
-      prev.map((a) =>
-        a.id === admin.id ? { ...a, active: !a.active } : a
-      )
-    );
+      const accion: AdminEstadoAccion = admin.active
+        ? "Bloqueo"
+        : "Desbloqueo";
+
+      await changeAdminEstado({
+        id_usuario: Number(admin.id),
+        accion,
+      });
+
+      // Después de cambiar el estado en backend, recargamos lista
+      await fetchAdmins();
+    } catch (error) {
+      console.error("Error cambiando estado del admin:", error);
+      // Aquí luego se puede agregar un toast de error
+    }
   };
 
   // ===========================
@@ -88,7 +102,6 @@ export default function GestorMainPage() {
 
   return (
     <>
-      {/* Overlay loading */}
       <Spinner
         variant="overlay"
         open={loading}
@@ -101,11 +114,8 @@ export default function GestorMainPage() {
       {!loading && (
         <main className="w-full flex justify-center px-6 py-10">
           <div className="w-full max-w-6xl flex flex-col gap-10">
-            
-            {/* FORMULARIO DE CREACIÓN */}
             <CreateAdmin onSubmit={handleCreate} />
 
-            {/* TABLA DE ADMINISTRADORES */}
             <AdminListCard
               admins={admins}
               loadingList={loadingList}
