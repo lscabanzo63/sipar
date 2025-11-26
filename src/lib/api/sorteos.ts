@@ -110,11 +110,7 @@ export async function upsertSorteoConfiguracion(params: {
   return data;
 }
 
-/**
- * Conveniencia para el cliente:
- * Usa el id_conjunto guardado en sessionStorage y ejecuta el upsert.
- * (Solo disponible en componentes "use client")
- */
+
 export async function upsertSorteoConfiguracionFromSession(
   payload: ConfiguracionPayload
 ): Promise<ConfiguracionResponse> {
@@ -133,9 +129,6 @@ export async function upsertSorteoConfiguracionFromSession(
   });
 }
 
-/**
- * Utilidad para formatear fechas a ISO local sin 'Z'
- */
 export function toNaiveLocalISO(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
