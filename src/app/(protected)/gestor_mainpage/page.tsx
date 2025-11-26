@@ -13,10 +13,13 @@ import {
 } from "@/lib/api/gestorService";
 
 export default function GestorMainPage() {
-  const [loading, setLoading] = useState(true); // overlay inicial
+  const [loading, setLoading] = useState(true);          // overlay inicial
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loadingList, setLoadingList] = useState(false); // spinner del botón "Listar usuarios"
 
+  // ===========================
+  // CARGA DE ADMINISTRADORES
+  // ===========================
   const fetchAdmins = async () => {
     setLoadingList(true);
 
@@ -43,6 +46,7 @@ export default function GestorMainPage() {
     }
   };
 
+  // Cargar lista al montar la página
   useEffect(() => {
     fetchAdmins();
   }, []);
@@ -51,34 +55,56 @@ export default function GestorMainPage() {
   // HANDLERS DEL CRUD
   // ===========================
 
-  const handleCreate = async (values: {
-    name: string;
-    email: string;
-    role: string;
-    password: string;
+  // Crear administrador desde el formulario
+  const handleCreate = async (payload: {
+    conjunto: {
+      nombre: string;
+      direccion: string;
+      numero_torres: string;
+      numero_apartamentos: string;
+      ciudad: string;
+      email_conjunto: string;
+      telefono_conjunto: string;
+      numero_parqueaderos: string;
+    };
+    admin: {
+      nombres: string;
+      apellidos: string;
+      email: string;
+      telefono: string;
+      documento: string;
+    };
   }) => {
-    console.log("Crear usuario (mock):", values);
+    console.log("Crear administrador (mock por ahora):", payload);
 
+    const { conjunto, admin } = payload;
+
+    // Por ahora solo actualizamos en memoria.
+    // Cuando tengas endpoint de creación, lo llamas aquí y luego haces fetchAdmins().
     const newAdmin: AdminUser = {
-      id: `${admins.length + 1}`,
-      name: values.name,
-      email: values.email,
-      conjunto: "Conjunto Residencial Indigo",
+      id: (admins.length + 1).toString(),
+      name: `${admin.nombres} ${admin.apellidos}`,
+      email: admin.email,
+      conjunto: conjunto.nombre,
       active: true,
     };
 
     setAdmins((prev) => [newAdmin, ...prev]);
   };
 
-  const handleEdit = (admin: AdminUser) => {
-    console.log("Editar usuario:", admin);
-    // Aquí luego conectamos updateAdmin + modal
+  // Actualizar fila editada en la tabla (edición inline)
+  const handleUpdateRow = async (updated: AdminUser) => {
+    console.log("Actualizar administrador (mock por ahora):", updated);
+
+    // Aquí después llamas a updateAdmin en backend; por ahora solo actualizamos estado local.
+    setAdmins((prev) =>
+      prev.map((a) => (a.id === updated.id ? updated : a))
+    );
   };
 
+  // Bloquear / Desbloquear administrador
   const handleToggleActive = async (admin: AdminUser) => {
     try {
-      console.log("Cambiar estado admin:", admin);
-
       const accion: AdminEstadoAccion = admin.active
         ? "Bloqueo"
         : "Desbloqueo";
@@ -88,16 +114,16 @@ export default function GestorMainPage() {
         accion,
       });
 
-      // Después de cambiar el estado en backend, recargamos lista
+      // Después de cambiar el estado en backend, recargamos la lista para tener data fresca
       await fetchAdmins();
     } catch (error) {
       console.error("Error cambiando estado del admin:", error);
-      // Aquí luego se puede agregar un toast de error
+      // Aquí luego puedes disparar un toast de error
     }
   };
 
   // ===========================
-  // RENDER PAGE
+  // RENDER
   // ===========================
 
   return (
@@ -105,8 +131,7 @@ export default function GestorMainPage() {
       <Spinner
         variant="overlay"
         open={loading}
-        text="Cargando información..."
-        size="md"
+        text="Cargando módulo del Gestor"
         backdropOpacity={60}
         blur
       />
@@ -114,13 +139,15 @@ export default function GestorMainPage() {
       {!loading && (
         <main className="w-full flex justify-center px-6 py-10">
           <div className="w-full max-w-6xl flex flex-col gap-10">
-            <CreateAdmin onSubmit={handleCreate} />
+            {/* Formulario de creación de administrador + conjunto */}
+            <CreateAdmin onCreate={handleCreate} />
 
+            {/* Tabla de administradores con edición inline */}
             <AdminListCard
               admins={admins}
               loadingList={loadingList}
               onRefresh={fetchAdmins}
-              onEdit={handleEdit}
+              onUpdate={handleUpdateRow}
               onToggleActive={handleToggleActive}
             />
           </div>
