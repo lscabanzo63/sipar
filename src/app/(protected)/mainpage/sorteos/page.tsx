@@ -266,9 +266,9 @@ export default function SorteosPage() {
   }, [router]);
 
 
-  // 1) Al cargar la página: GET configuración y precargar UI si existe
+
   React.useEffect(() => {
-    if (!authChecked || !isAuthenticated) return; // 👈 solo si ya verifiqué auth
+    if (!authChecked || !isAuthenticated) return; 
 
     (async () => {
       try {

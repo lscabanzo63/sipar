@@ -110,7 +110,6 @@ export async function upsertSorteoConfiguracion(params: {
   return data;
 }
 
-
 export async function upsertSorteoConfiguracionFromSession(
   payload: ConfiguracionPayload
 ): Promise<ConfiguracionResponse> {
@@ -129,10 +128,90 @@ export async function upsertSorteoConfiguracionFromSession(
   });
 }
 
+/**
+ * Utilidad para formatear fechas a ISO local sin 'Z'
+ */
 export function toNaiveLocalISO(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
     `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
     `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
   );
+}
+
+/* =========================================================
+ * POST /api/v1/sorteos/ejecutar  — Ejecutar sorteo
+ * ========================================================= */
+
+export interface EjecutarSorteoPayload {
+  id_conjunto: number;
+  /** Fecha actual en ISO sin zona horaria, ej: "2025-11-25T00:00:00" */
+  fecha_actual: string;
+}
+
+export interface GanadorSorteo {
+  usuario_id: number;
+  nombre: string;
+  numero_parqueadero: number;
+}
+
+export interface EjecutarSorteoResponse {
+  id_resultado_sorteo: number;
+  mensaje: string;
+  ganadores: GanadorSorteo[];
+  fecha_sorteo: string; // ISO
+}
+
+/**
+ * POST /api/v1/sorteos/ejecutar
+ * Ejecuta el sorteo para un conjunto específico.
+ */
+export async function ejecutarSorteo(
+  payload: EjecutarSorteoPayload
+): Promise<EjecutarSorteoResponse> {
+  const token = sessionStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No se encontró token de autenticación en sessionStorage");
+  }
+
+  const res = await fetch(`${BASE_URL}/api/v1/sorteos/ejecutar`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: WITH_CREDENTIALS ? "include" : "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const message = await readError(res);
+    throw new Error(`${res.status} ${message}`);
+  }
+
+  const data = (await res.json()) as EjecutarSorteoResponse;
+  return data;
+}
+
+/**
+ * Helper para ejecutar el sorteo usando el id_conjunto desde sessionStorage.
+ */
+export async function ejecutarSorteoFromSession(
+  fechaActualISO: string
+): Promise<EjecutarSorteoResponse> {
+  if (typeof window === "undefined") {
+    throw new Error("Solo disponible en cliente");
+  }
+
+  const idConjunto = sessionStorage.getItem("conjunto_residencial_id");
+  if (!idConjunto) {
+    throw new Error("Falta conjunto_residencial_id en la sesión");
+  }
+
+  return ejecutarSorteo({
+    id_conjunto: Number(idConjunto),
+    fecha_actual: fechaActualISO,
+  });
 }

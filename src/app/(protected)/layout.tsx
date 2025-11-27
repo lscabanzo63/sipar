@@ -13,7 +13,7 @@ import { getNavItemsFor, type UserRole } from "@/lib/utils/nav";
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
-  const role: UserRole = sessionStorage.getItem("rol") as UserRole || "invitado";
+  const role: UserRole = "administrador";
   const navItems = getNavItemsFor(role);
   const name = sessionStorage.getItem("name") || "Usuario";
   const [authChecked, setAuthChecked] = React.useState(false);
